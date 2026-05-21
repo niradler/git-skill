@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }}, Go ${{ matrix.go }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go: ["1.22", "1.23"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Configure git identity
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
+
+      - name: Unit tests
+        run: go test ./...
+
+      - name: Build (unix)
+        if: runner.os != 'Windows'
+        run: go build -o git-skill ./cmd/git-skill
+
+      - name: Build (windows)
+        if: runner.os == 'Windows'
+        run: go build -o git-skill.exe ./cmd/git-skill
+
+      - name: Integration tests
+        if: runner.os != 'Windows'
+        run: bash test.sh
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: go vet
+        run: go vet ./...

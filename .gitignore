@@ -1,0 +1,13 @@
+/git-skill
+/git-skill.exe
+*.test
+*.out
+.DS_Store
+files/
+.claude/
+skillhub-viz.jsx
+.review-prompt.txt
+.codex-review.md
+.codex-stream.log
+/dist/
+/bin/
