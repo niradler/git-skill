@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>git-skill — git-native skill versioning</title>
+<meta name="description" content="git-skill stores AI agent skills as git tree objects, versions them with git tags, and pins exact commits in skill.lock for reproducible installs." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono&display=swap" rel="stylesheet" />
+
+<script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-canvas-white: #ffffff;
+    --color-ghost-gray: #f2f2f2;
+    --color-subtle-ash: #e5e5e5;
+    --color-midtone-gray: #737373;
+    --color-rich-black: #0a0a0a;
+    --color-deep-black: #000000;
+    --color-callout-red: #c22b10;
+    --color-success-green: #10c22b;
+
+    --font-geist: 'Geist', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-geist-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    --text-caption: 12px;
+    --text-body: 14px;
+    --text-heading: 18px;
+    --text-display: 48px;
+
+    --radius-lg: 10px;
+    --radius-xl: 14px;
+    --radius-3xl: 26px;
+    --radius-pill: 9999px;
+  }
+
+  html { background: #ffffff; color: #0a0a0a; font-family: 'Geist', ui-sans-serif, system-ui, sans-serif; }
+  body { font-size: 14px; line-height: 1.43; }
+  code, pre, .mono { font-family: 'Geist Mono', ui-monospace, monospace; }
+  pre code { font-size: 13px; }
+  /* mermaid blocks: respect token colors */
+  .mermaid { font-family: 'Geist', ui-sans-serif, sans-serif !important; }
+  .mermaid svg { max-width: 100%; height: auto; }
+  /* selectable but neat code blocks */
+  pre { white-space: pre; overflow-x: auto; }
+</style>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      fontFamily: 'Geist, ui-sans-serif, system-ui, sans-serif',
+      fontSize: '13px',
+      primaryColor: '#ffffff',
+      primaryTextColor: '#0a0a0a',
+      primaryBorderColor: '#0a0a0a',
+      lineColor: '#0a0a0a',
+      secondaryColor: '#f2f2f2',
+      tertiaryColor: '#ffffff',
+      noteBkgColor: '#f2f2f2',
+      noteTextColor: '#0a0a0a',
+      noteBorderColor: '#e5e5e5',
+      clusterBkg: '#f2f2f2',
+      clusterBorder: '#e5e5e5',
+      edgeLabelBackground: '#ffffff'
+    },
+    flowchart: { curve: 'basis', padding: 16 },
+    sequence: { actorMargin: 60 }
+  });
+</script>
+</head>
+<body class="bg-canvas-white text-rich-black">
+
+<!-- ───── Nav ───── -->
+<nav class="sticky top-0 z-50 bg-canvas-white border-b border-subtle-ash">
+  <div class="max-w-[1080px] mx-auto px-6 h-14 flex items-center justify-between">
+    <a href="#" class="flex items-center gap-2 text-deep-black font-medium">
+      <span class="inline-block w-5 h-5 rounded-[4px] bg-deep-black"></span>
+      <span>git-skill</span>
+    </a>
+    <div class="flex items-center gap-2">
+      <a href="#why" class="hidden md:inline-block px-3 py-1.5 text-rich-black hover:bg-ghost-gray rounded-pill">Why</a>
+      <a href="#how" class="hidden md:inline-block px-3 py-1.5 text-rich-black hover:bg-ghost-gray rounded-pill">How it works</a>
+      <a href="#usage" class="hidden md:inline-block px-3 py-1.5 text-rich-black hover:bg-ghost-gray rounded-pill">Usage</a>
+      <a href="#best-practices" class="hidden md:inline-block px-3 py-1.5 text-rich-black hover:bg-ghost-gray rounded-pill">Best practices</a>
+      <a href="https://github.com/niradler/git-skill" class="ml-2 inline-flex items-center gap-2 px-4 py-1.5 bg-deep-black text-canvas-white rounded-[10px] hover:opacity-90">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2 .37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.42 7.42 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ───── Hero ───── -->
+<section class="px-6 pt-20 pb-20">
+  <div class="max-w-[880px] mx-auto text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-pill border border-subtle-ash text-[12px] text-midtone-gray">
+      <span class="w-1.5 h-1.5 rounded-full bg-success-green"></span>
+      v0.1.1 — initial public release
+    </div>
+    <h1 class="text-[48px] leading-[1] tracking-[-2.4px] font-semibold text-deep-black">
+      Skills as git objects.
+    </h1>
+    <p class="mt-6 text-[18px] leading-[1.33] tracking-[-0.45px] text-rich-black max-w-[640px] mx-auto">
+      git-skill stores your AI agent skills the same way git stores code — as tree objects, versioned with tags, distributed with any git remote, pinned by commit SHA for reproducible installs.
+    </p>
+    <div class="mt-10 flex flex-wrap items-center justify-center gap-2">
+      <a href="#quick-start" class="px-12 py-2 bg-deep-black text-canvas-white rounded-[10px] hover:opacity-90 font-medium">Quick start</a>
+      <a href="https://github.com/niradler/git-skill/releases/tag/v0.1.1" class="px-5 py-2 text-rich-black rounded-pill hover:bg-ghost-gray">Download v0.1.1 →</a>
+    </div>
+    <div class="mt-12 max-w-[560px] mx-auto">
+      <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4 text-left">
+        <div class="text-[12px] text-midtone-gray mb-2">install (macOS / Linux)</div>
+        <pre class="mono text-[13px] leading-[1.6]"><code>curl -fsSL https://github.com/niradler/git-skill/releases/download/v0.1.1/git-skill_0.1.1_linux_amd64 -o git-skill \
+  &amp;&amp; chmod +x git-skill &amp;&amp; sudo mv git-skill /usr/local/bin/</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───── Why ───── -->
+<section id="why" class="px-6 py-20 border-t border-subtle-ash">
+  <div class="max-w-[1080px] mx-auto">
+    <div class="max-w-[680px]">
+      <div class="text-[12px] text-midtone-gray uppercase tracking-wider">Why git-skill</div>
+      <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">Skills deserve the same rigor as code.</h2>
+      <p class="mt-4 text-rich-black">A skill is a prompt + supporting files that change how an agent behaves. Today they're scattered across folders, gists, and copy-pasted snippets. There's no version, no lockfile, no way to say "every machine in our team runs <em>this exact</em> review skill at <em>this exact</em> SHA". git-skill fixes that, using only the git you already have.</p>
+    </div>
+
+    <div class="mt-10 grid md:grid-cols-3 gap-4">
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="text-deep-black font-medium">git-native</div>
+        <p class="mt-2 text-rich-black">Every skill is a real git commit pointing at a real git tree under <code class="mono">refs/skills/&lt;name&gt;</code>. <code class="mono">git log</code>, <code class="mono">git diff</code>, <code class="mono">git cat-file</code> — they all just work. No new database, no central registry, no SaaS.</p>
+      </div>
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="text-deep-black font-medium">Reproducible</div>
+        <p class="mt-2 text-rich-black"><code class="mono">skill.lock</code> pins skills to a commit SHA, not a tag. A tag can move; a SHA can't. <code class="mono">git skill sync</code> on any machine produces byte-identical files.</p>
+      </div>
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="text-deep-black font-medium">Portable</div>
+        <p class="mt-2 text-rich-black">Any git remote that supports pushing refs works — GitHub, GitLab, Bitbucket, Gitea, a bare repo on a USB stick. Public, private, monorepo, polyrepo, doesn't matter.</p>
+      </div>
+    </div>
+
+    <div class="mt-4 grid md:grid-cols-3 gap-4">
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="text-deep-black font-medium">Cross-platform</div>
+        <p class="mt-2 text-rich-black">Lockfile paths are repo-relative, forward-slash. Symlink targets are relative-to-parent. A <code class="mono">skill.lock</code> written on Windows works on Linux and macOS, unchanged.</p>
+      </div>
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="text-deep-black font-medium">Single binary</div>
+        <p class="mt-2 text-rich-black">A ~3 MB Go executable. No runtime, no daemon, no shell rewrites. Drop in your <code class="mono">PATH</code> and <code class="mono">git skill ...</code> works as a git subcommand.</p>
+      </div>
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="text-deep-black font-medium">Agent-agnostic</div>
+        <p class="mt-2 text-rich-black">Materialises symlinks where each agent expects to read skills (<code class="mono">.claude/skills/</code>, <code class="mono">.agents/skills/</code>). Adding a new agent is a one-line change.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───── How it works ───── -->
+<section id="how" class="px-6 py-20 border-t border-subtle-ash bg-ghost-gray">
+  <div class="max-w-[1080px] mx-auto">
+    <div class="max-w-[680px]">
+      <div class="text-[12px] text-midtone-gray uppercase tracking-wider">How it works</div>
+      <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">A skill is a git ref, not a folder.</h2>
+      <p class="mt-4 text-rich-black">Every skill lives at <code class="mono">refs/skills/&lt;name&gt;</code>, and each tagged release at <code class="mono">refs/skill-tags/&lt;name&gt;/vX.Y.Z</code>. Skills travel with the repo's regular <code class="mono">git push</code> / <code class="mono">git fetch</code> machinery — git-skill never invents a transport.</p>
+    </div>
+
+    <div class="mt-10 grid lg:grid-cols-2 gap-4">
+      <!-- Diagram 1: storage model -->
+      <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
+        <div class="text-[12px] text-midtone-gray uppercase tracking-wider mb-3">Storage model</div>
+        <div class="mermaid">
+graph TD
+  A["SKILL.md + files<br/>on disk"] -->|"git skill track"| B["git tree object"]
+  B -->|"git commit-tree"| C["git commit object"]
+  C -->|"git update-ref"| D["refs/skills/&lt;name&gt;<br/>(branch-like ref)"]
+  C -->|"git skill tag v1.0.0"| E["refs/skill-tags/&lt;name&gt;/v1.0.0<br/>(immutable release)"]
+  D -->|"git push origin"| F["GitHub remote"]
+  E -->|"git push origin"| F
+        </div>
+      </div>
+
+      <!-- Diagram 2: producer-consumer -->
+      <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
+        <div class="text-[12px] text-midtone-gray uppercase tracking-wider mb-3">Author → consume flow</div>
+        <div class="mermaid">
+sequenceDiagram
+  participant A as Author
+  participant Pr as Producer repo
+  participant GH as GitHub
+  participant Cr as Consumer repo
+  A->>Pr: git skill init code-review
+  A->>Pr: git skill commit -m "..."
+  A->>Pr: git skill tag code-review 1.0.0
+  Pr->>GH: git skill push origin
+  Note over Cr: teammate clones their app repo
+  Cr->>GH: git skill get URL code-review@1.0.0
+  GH-->>Cr: fetch refs/skill-tags/.../v1.0.0
+  Cr->>Cr: extract tree → .claude/skills/code-review/
+  Cr->>Cr: write skill.lock (pins SHA)
+        </div>
+      </div>
+    </div>
+
+    <!-- Diagram 3: lockfile semantics -->
+    <div class="mt-4 rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
+      <div class="text-[12px] text-midtone-gray uppercase tracking-wider mb-3">Lockfile = reproducibility contract</div>
+      <div class="mermaid">
+flowchart LR
+  subgraph LF["skill.lock (committed to your app repo)"]
+    direction TB
+    L1["remote: URL"]
+    L2["version: v1.0.0"]
+    L3["commit: abc123… (SHA — immutable)"]
+    L4["canonical: .claude/skills/code-review"]
+    L5["agents.cursor: .agents/skills/code-review"]
+  end
+  T["upstream tag v1.0.0<br/>(can move)"] -. "decoupled" .-> L2
+  S["upstream commit abc123<br/>(can't move)"] ==> L3
+  L3 ==> RR["git skill sync<br/>→ identical bytes everywhere"]
+      </div>
+      <p class="mt-3 text-[13px] text-midtone-gray">If an upstream maintainer force-moves <code class="mono">v1.0.0</code> to a different commit, every machine that already ran <code class="mono">sync</code> stays on the SHA in its lockfile. You opt into the new version explicitly with <code class="mono">git skill get …@1.0.1</code>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ───── Quick start ───── -->
+<section id="quick-start" class="px-6 py-20 border-t border-subtle-ash">
+  <div class="max-w-[1080px] mx-auto">
+    <div class="max-w-[680px]">
+      <div class="text-[12px] text-midtone-gray uppercase tracking-wider">Quick start</div>
+      <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">Three commands to a versioned skill.</h2>
+    </div>
+
+    <div class="mt-10 grid md:grid-cols-3 gap-4">
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="inline-flex items-center justify-center w-5 h-5 rounded-pill bg-deep-black text-canvas-white text-[11px] font-medium">1</span>
+          <span class="text-deep-black font-medium">Install</span>
+        </div>
+        <p class="text-[13px] text-midtone-gray mb-2">Grab the binary for your OS from releases, or build from source with <code class="mono">go install</code>.</p>
+<pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code># build from source
+go install github.com/niradler/git-skill/cmd/git-skill@latest</code></pre>
+      </div>
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="inline-flex items-center justify-center w-5 h-5 rounded-pill bg-deep-black text-canvas-white text-[11px] font-medium">2</span>
+          <span class="text-deep-black font-medium">Author</span>
+        </div>
+        <p class="text-[13px] text-midtone-gray mb-2">Scaffold a skill, edit <code class="mono">SKILL.md</code>, snapshot it, tag a release, publish to your remote.</p>
+<pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill init code-review "PR checklist"
+# edit code-review/SKILL.md
+git skill commit code-review -m "Add checklist"
+git skill tag code-review 1.0.0
+git skill push origin</code></pre>
+      </div>
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="inline-flex items-center justify-center w-5 h-5 rounded-pill bg-deep-black text-canvas-white text-[11px] font-medium">3</span>
+          <span class="text-deep-black font-medium">Consume</span>
+        </div>
+        <p class="text-[13px] text-midtone-gray mb-2">Anywhere else, install pinned by tag, commit <code class="mono">skill.lock</code>, teammates run <code class="mono">sync</code>.</p>
+<pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill get \
+  https://github.com/you/skills.git \
+  code-review@1.0.0 \
+  .claude/skills/
+git add skill.lock &amp;&amp; git commit -m "pin"</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───── Usage ───── -->
+<section id="usage" class="px-6 py-20 border-t border-subtle-ash bg-ghost-gray">
+  <div class="max-w-[1080px] mx-auto">
+    <div class="max-w-[680px]">
+      <div class="text-[12px] text-midtone-gray uppercase tracking-wider">Usage</div>
+      <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">Common workflows.</h2>
+    </div>
+
+    <div class="mt-10 grid lg:grid-cols-2 gap-4">
+
+      <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
+        <div class="text-deep-black font-medium">Bump a skill across your team</div>
+        <p class="mt-2 text-rich-black">Author tags <code class="mono">1.1.0</code>; every consumer changes one line and commits the lock.</p>
+<pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code># author
+git skill commit code-review -m "Add async-fn check"
+git skill tag code-review 1.1.0
+git skill push origin
+
+# consumer
+git skill get URL code-review@1.1.0 .claude/skills/
+git add skill.lock &amp;&amp; git commit -m "bump code-review to v1.1.0"</code></pre>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
+        <div class="text-deep-black font-medium">Reproduce a teammate's setup</div>
+        <p class="mt-2 text-rich-black">They committed <code class="mono">skill.lock</code>; you just <code class="mono">sync</code>. No tags involved — the SHA is what binds.</p>
+<pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git clone &lt;their-app-repo&gt;
+cd &lt;their-app-repo&gt;
+git skill sync
+# fetching code-review from URL...
+# synced code-review → .claude/skills/code-review (abc1234)</code></pre>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
+        <div class="text-deep-black font-medium">Revert to a previous version</div>
+        <p class="mt-2 text-rich-black">Bad release just shipped? Re-install the old tag, commit the lockfile.</p>
+<pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill get URL code-review@1.0.0 .claude/skills/
+git add skill.lock &amp;&amp; git commit -m "revert code-review to v1.0.0"</code></pre>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
+        <div class="text-deep-black font-medium">Inspect what changed between releases</div>
+        <p class="mt-2 text-rich-black">Plain git diff — no special tooling needed.</p>
+<pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill diff code-review v1.0.0 v1.1.0
+# or with raw git:
+git diff refs/skill-tags/code-review/v1.0.0 \
+         refs/skill-tags/code-review/v1.1.0</code></pre>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
+        <div class="text-deep-black font-medium">Use with private repos</div>
+        <p class="mt-2 text-rich-black">git-skill shells out to plain <code class="mono">git fetch</code> / <code class="mono">push</code>. Whatever credentials work for <code class="mono">git clone</code> work here.</p>
+<pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code># once per machine
+gh auth login
+
+git skill get \
+  https://github.com/acme/private-skills.git \
+  internal-rubric@2.0.0 \
+  .claude/skills/</code></pre>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
+        <div class="text-deep-black font-medium">Use without the CLI</div>
+        <p class="mt-2 text-rich-black">Skills are plain git refs — any git-aware tool reads them natively.</p>
+<pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git cat-file -p refs/skills/code-review
+# tree abc...
+# author Your Name &lt;you@example.com&gt;
+# Skill-Version: 1.0.0
+
+git ls-tree refs/skills/code-review
+# 100644 blob ...  SKILL.md</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───── Best Practices ───── -->
+<section id="best-practices" class="px-6 py-20 border-t border-subtle-ash">
+  <div class="max-w-[1080px] mx-auto">
+    <div class="max-w-[680px]">
+      <div class="text-[12px] text-midtone-gray uppercase tracking-wider">Best practices</div>
+      <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">How to use git-skill well.</h2>
+    </div>
+
+    <div class="mt-10 grid md:grid-cols-2 gap-4">
+
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded-3xl bg-deep-black text-canvas-white text-[11px] font-medium">DO</span>
+          <span class="text-deep-black font-medium">Always commit <code class="mono">skill.lock</code></span>
+        </div>
+        <p class="mt-2 text-rich-black">It's the reproducibility contract. Without it, <code class="mono">git skill sync</code> is a no-op for everyone else. Commit it alongside the code change that consumes the skill.</p>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded-3xl bg-deep-black text-canvas-white text-[11px] font-medium">DO</span>
+          <span class="text-deep-black font-medium">Tag every published version</span>
+        </div>
+        <p class="mt-2 text-rich-black">Tags are how consumers talk about "version 1.0.0". Untagged commits are still installable by SHA, but tags give your team something human-readable to reason about.</p>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded-3xl bg-deep-black text-canvas-white text-[11px] font-medium">DO</span>
+          <span class="text-deep-black font-medium">Treat skills like packages, not configs</span>
+        </div>
+        <p class="mt-2 text-rich-black">Semver them. Write a short changelog inside <code class="mono">SKILL.md</code> for each release. Bumping a tag without notes is the fastest way to lose your team's trust.</p>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded-3xl bg-deep-black text-canvas-white text-[11px] font-medium">DO</span>
+          <span class="text-deep-black font-medium">Use a URL for <code class="mono">remote</code></span>
+        </div>
+        <p class="mt-2 text-rich-black">The <code class="mono">remote</code> field in <code class="mono">skill.lock</code> must resolve from every teammate's machine. <code class="mono">https://github.com/…</code> or <code class="mono">git@github.com:…</code> — never a local filesystem path.</p>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded-3xl bg-deep-black text-canvas-white text-[11px] font-medium">DO</span>
+          <span class="text-deep-black font-medium">Review third-party skills before installing</span>
+        </div>
+        <p class="mt-2 text-rich-black">A <code class="mono">SKILL.md</code> is read by your agent the same way <em>your</em> instructions are. <code class="mono">git skill diff</code> the new tag before upgrading; treat it like a code review.</p>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded-3xl bg-callout-red text-canvas-white text-[11px] font-medium">DON'T</span>
+          <span class="text-deep-black font-medium">Move tags after publishing</span>
+        </div>
+        <p class="mt-2 text-rich-black">Tags are technically mutable but treat them as immutable. Need to fix a bug? Cut a new patch version. Force-moving a tag breaks everyone's intuition about what <code class="mono">v1.0.0</code> means.</p>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded-3xl bg-callout-red text-canvas-white text-[11px] font-medium">DON'T</span>
+          <span class="text-deep-black font-medium">Edit installed skill files in place</span>
+        </div>
+        <p class="mt-2 text-rich-black">Files in <code class="mono">.claude/skills/&lt;name&gt;</code> are a materialised copy of an upstream commit. The next <code class="mono">sync</code> overwrites them. Fork the skill or open a PR upstream instead.</p>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded-3xl bg-callout-red text-canvas-white text-[11px] font-medium">DON'T</span>
+          <span class="text-deep-black font-medium">Mix skill commits with app commits</span>
+        </div>
+        <p class="mt-2 text-rich-black"><code class="mono">refs/skills/*</code> are isolated from your app's <code class="mono">main</code>. Don't try to consolidate by cherry-picking between them — the disjoint history is a feature, not an accident.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ───── Spec / Docs Links ───── -->
+<section class="px-6 py-20 border-t border-subtle-ash">
+  <div class="max-w-[1080px] mx-auto">
+    <div class="max-w-[680px]">
+      <div class="text-[12px] text-midtone-gray uppercase tracking-wider">Read the docs</div>
+      <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">Go deeper.</h2>
+    </div>
+
+    <div class="mt-10 grid md:grid-cols-2 gap-4">
+      <a href="https://github.com/niradler/git-skill/blob/main/docs/using-git-skill-with-github.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
+        <div class="text-deep-black font-medium">→ Using git-skill with GitHub</div>
+        <p class="mt-2 text-rich-black">Step-by-step walkthrough: producer repo, tags, push, consume from a teammate's app repo, private repos, CI/CD.</p>
+      </a>
+      <a href="https://github.com/niradler/git-skill/blob/main/SKILL-FORMAT.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
+        <div class="text-deep-black font-medium">→ SKILL-FORMAT spec</div>
+        <p class="mt-2 text-rich-black">The storage format on its own, decoupled from the CLI. Re-implement it in any language; the refs and trees are what matter.</p>
+      </a>
+      <a href="https://github.com/niradler/git-skill/blob/main/ARCHITECTURE.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
+        <div class="text-deep-black font-medium">→ Architecture</div>
+        <p class="mt-2 text-rich-black">Internal design: why refs, why a JSON lockfile, what's deliberately out of scope, where the seams live.</p>
+      </a>
+      <a href="https://github.com/niradler/git-skill/blob/main/SECURITY.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
+        <div class="text-deep-black font-medium">→ Security &amp; threat model</div>
+        <p class="mt-2 text-rich-black">What git-skill defends against, what it doesn't, and how to harden a consumer setup against malicious third-party skills.</p>
+      </a>
+      <a href="https://github.com/niradler/git-skill/blob/main/CHANGELOG.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
+        <div class="text-deep-black font-medium">→ Changelog</div>
+        <p class="mt-2 text-rich-black">Every release, every fix. Currently v0.1.1.</p>
+      </a>
+      <a href="https://github.com/niradler/git-skill/blob/main/CONTRIBUTING.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
+        <div class="text-deep-black font-medium">→ Contributing</div>
+        <p class="mt-2 text-rich-black">How to file issues, propose changes, run the test suite, ship binaries. PRs welcome.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ───── Footer ───── -->
+<footer class="px-6 py-12 border-t border-subtle-ash">
+  <div class="max-w-[1080px] mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="flex items-center gap-2 text-rich-black">
+      <span class="inline-block w-5 h-5 rounded-[4px] bg-deep-black"></span>
+      <span class="font-medium">git-skill</span>
+      <span class="text-midtone-gray">— git-native skill versioning</span>
+    </div>
+    <div class="flex items-center gap-3 text-[13px] text-midtone-gray">
+      <a href="https://github.com/niradler/git-skill" class="hover:text-rich-black">GitHub</a>
+      <span class="opacity-40">·</span>
+      <a href="https://github.com/niradler/git-skill/releases" class="hover:text-rich-black">Releases</a>
+      <span class="opacity-40">·</span>
+      <a href="https://github.com/niradler/git-skill/issues" class="hover:text-rich-black">Issues</a>
+      <span class="opacity-40">·</span>
+      <span>MIT</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
