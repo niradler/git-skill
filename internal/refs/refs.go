@@ -47,6 +47,12 @@ func KindPushRefspec(k kind.Kind) string {
 func KindFetchRefspec(k kind.Kind) string {
 	return "+" + KindPrefix(k) + "*:" + KindPrefix(k) + "*"
 }
+func KindPushTagRefspec(k kind.Kind) string {
+	return KindTagPrefix(k) + "*:" + KindTagPrefix(k) + "*"
+}
+func KindFetchTagRefspec(k kind.Kind) string {
+	return "+" + KindTagPrefix(k) + "*:" + KindTagPrefix(k) + "*"
+}
 
 // ParseRef extracts kind + name from a ref under refs/assets/.
 // Returns an error if the ref is not under the asset prefix or the kind segment
