@@ -19,6 +19,9 @@ func init() {
 	register("push", func(p Profile, args []string, stdout, stderr io.Writer) error {
 		return cmdcommands.Push(toCmdProfile(p), args, stdout, stderr)
 	})
+	register("fetch", func(p Profile, args []string, stdout, stderr io.Writer) error {
+		return cmdcommands.Fetch(toCmdProfile(p), args, stdout, stderr)
+	})
 }
 
 func toCmdProfile(p Profile) cmdcommands.Profile {
