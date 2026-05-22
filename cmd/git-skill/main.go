@@ -58,7 +58,6 @@ func printHelp(p Profile, w io.Writer) {
 // stub with a real handler — they MUST also delete that name from this slice
 // to avoid the duplicate-registration panic at startup.
 var stubNames = []string{
-	"update",
 	"remove", "discover",
 }
 
