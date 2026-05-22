@@ -48,14 +48,23 @@ func installOne(repoRoot string, st *state.State, k kind.Kind, name string, e st
 		return fmt.Errorf("fetch %s: %w", e.Remote, err)
 	}
 	canonAbs := filepath.Join(repoRoot, e.Canonical)
-	if err := os.RemoveAll(canonAbs); err != nil {
-		return err
+	// In dev mode, preserve local edits to the canonical tree: only checkout
+	// when the canonical path does not yet exist. Non-dev installs always
+	// refresh the canonical tree to match the pinned commit.
+	canonExists := false
+	if info, err := os.Stat(canonAbs); err == nil && info.IsDir() {
+		canonExists = true
 	}
-	if err := os.MkdirAll(canonAbs, 0755); err != nil {
-		return err
-	}
-	if err := git.ReadTreeToDir(e.Commit, canonAbs); err != nil {
-		return fmt.Errorf("checkout tree: %w", err)
+	if !(e.Dev && canonExists) {
+		if err := os.RemoveAll(canonAbs); err != nil {
+			return err
+		}
+		if err := os.MkdirAll(canonAbs, 0755); err != nil {
+			return err
+		}
+		if err := git.ReadTreeToDir(e.Commit, canonAbs); err != nil {
+			return fmt.Errorf("checkout tree: %w", err)
+		}
 	}
 	matcher, err := assetignore.LoadFromTree(canonAbs)
 	if err != nil {

@@ -244,11 +244,10 @@ func TestA4_MultiRemote(t *testing.T) {
 // Edit canonical SKILL.md — content should reflect edit via symlink/junction/copy.
 // install again — canonical NOT clobbered.
 //
-// BUG: installOne() unconditionally calls os.RemoveAll + git.ReadTreeToDir on the
-// canonical directory regardless of the e.Dev flag. This overwrites local edits on
-// every install call, breaking the dev-mode contract. Skipping until fixed in CLI.
+// In dev mode install preserves local edits to the canonical tree — only
+// non-dev installs refresh canonical from the pinned commit (see installOne
+// in cmd/git-skill/commands/install.go).
 func TestA5_DevMode(t *testing.T) {
-	t.Skip("BUG: installOne() clobbers canonical dev edits on re-install — e.Dev flag not respected in canonical checkout path")
 	producer := newRepo(t)
 	bare := newBareRepo(t)
 	mustRun(t, producer.dir, "git", "remote", "add", "origin", bare)
