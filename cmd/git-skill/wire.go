@@ -34,6 +34,9 @@ func init() {
 	register("show", func(p Profile, args []string, stdout, stderr io.Writer) error {
 		return cmdcommands.Show(toCmdProfile(p), args, stdout, stderr)
 	})
+	register("install", func(p Profile, args []string, stdout, stderr io.Writer) error {
+		return cmdcommands.Install(toCmdProfile(p), args, stdout, stderr)
+	})
 }
 
 func toCmdProfile(p Profile) cmdcommands.Profile {
