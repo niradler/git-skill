@@ -13,6 +13,9 @@ func init() {
 	register("commit", func(p Profile, args []string, stdout, stderr io.Writer) error {
 		return cmdcommands.Commit(toCmdProfile(p), args, stdout, stderr)
 	})
+	register("tag", func(p Profile, args []string, stdout, stderr io.Writer) error {
+		return cmdcommands.Tag(toCmdProfile(p), args, stdout, stderr)
+	})
 }
 
 func toCmdProfile(p Profile) cmdcommands.Profile {
