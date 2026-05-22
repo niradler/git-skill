@@ -178,3 +178,40 @@ func DiffTree(a, b string) (string, error) {
 func CatFile(typ, hash string) (string, error) {
 	return Run("cat-file", typ, hash)
 }
+
+// CommitTreeWithMessageFile is like CommitTree but reads the message from a
+// tempfile via -F, which (unlike -m) preserves multi-line bodies and trailers
+// verbatim. Used by the asset commit path to embed the Asset-Kind trailer.
+func CommitTreeWithMessageFile(tree, message string, parents ...string) (string, error) {
+	tmp, err := os.CreateTemp("", "git-skill-msg-*")
+	if err != nil {
+		return "", fmt.Errorf("create message tempfile: %w", err)
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.WriteString(message); err != nil {
+		tmp.Close()
+		return "", fmt.Errorf("write message tempfile: %w", err)
+	}
+	tmp.Close()
+
+	args := []string{"commit-tree", tree}
+	for _, p := range parents {
+		args = append(args, "-p", p)
+	}
+	args = append(args, "-F", tmp.Name())
+	return Run(args...)
+}
+
+// runIn shells `git` with cwd=dir. Internal helper for tests that operate on a
+// specific repo without chdir-ing.
+func runIn(dir string, args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(stderr.String()))
+	}
+	return strings.TrimSpace(stdout.String()), nil
+}
