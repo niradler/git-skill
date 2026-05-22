@@ -46,6 +46,9 @@ func init() {
 	register("remove", func(p Profile, args []string, stdout, stderr io.Writer) error {
 		return cmdcommands.Remove(toCmdProfile(p), args, stdout, stderr)
 	})
+	register("discover", func(p Profile, args []string, stdout, stderr io.Writer) error {
+		return cmdcommands.Discover(toCmdProfile(p), args, stdout, stderr)
+	})
 }
 
 func toCmdProfile(p Profile) cmdcommands.Profile {

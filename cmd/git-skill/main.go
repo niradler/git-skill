@@ -57,9 +57,7 @@ func printHelp(p Profile, w io.Writer) {
 // stubNames is the canonical command list. Phase 5/6 tasks each replace one
 // stub with a real handler — they MUST also delete that name from this slice
 // to avoid the duplicate-registration panic at startup.
-var stubNames = []string{
-	"discover",
-}
+var stubNames = []string{}
 
 func init() {
 	for _, name := range stubNames {
