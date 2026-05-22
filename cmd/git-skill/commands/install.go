@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,8 +17,7 @@ import (
 
 func Install(p Profile, args []string, stdout, stderr io.Writer) error {
 	if len(args) > 0 {
-		// Task 26 will replace this with: return Add(p, args, stdout, stderr).
-		return errors.New("install <name> not yet supported (use 'add')")
+		return Add(p, args, stdout, stderr)
 	}
 	cwd, err := os.Getwd()
 	if err != nil {
