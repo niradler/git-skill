@@ -4,6 +4,34 @@ All notable changes to git-skill are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Added
+- **Assets format** — unified storage for both **skills** and **agents** under `refs/assets/<kind>/<name>` (was `refs/skills/<name>`).
+- **Three CLI personas** via argv[0] dispatch: `git-skill`, `git-agent`, `git-asset` share one binary; the invocation name sets the default kind.
+- **`assets.json`** — single committed file replacing `skill.lock`. Carries both intent (`spec`) and resolution (`version`, `commit`) so a fresh clone + `install` restores the exact working tree.
+- **`git skill add <ns>/<name>[@spec] --from <url>`** — onboard a remote asset, resolving a semver spec against tags on first add.
+- **`git skill update [<name>]`** — re-resolve spec to a new version+commit and re-materialize.
+- **`git skill remove <name>`** — drop from `assets.json`, delete canonical + runtime paths.
+- **`git skill install`** — vercel-style materialization: read `assets.json`, fetch pinned commit, restore canonical, link/copy into each configured runtime path.
+- **`git skill discover <url>`** — enumerate remote assets via `ls-remote`.
+- **`Asset-Kind: <kind>`** commit trailer on every snapshot, making commits self-describing.
+- **4-tier kind discriminator** — existing ref > `--kind` flag > frontmatter > marker filename > profile default. Conflicts produce a warning.
+- **Cross-platform materialization** — Unix relative symlinks; Windows junctions or copy fallback when symlink privilege is unavailable.
+- **`.assetignore`** — gitignore-style filter applied during copy materialization (dev-mode symlinks see the full tree).
+- **Built-in runtime registry** — `claude`, `cursor`, `codex`, `opencode`. Skills materialize as trees; agents as the single `AGENT.md` marker.
+- **Dev mode** — `e.Dev == true` preserves local edits to the canonical tree on re-install. Non-dev installs always refresh from the pinned commit.
+- **Release E2E suite** (`test/e2e/release/`) — 16 tests covering flows, contracts, platform, errors, and idempotency on a real git repo.
+
+### Changed
+- **Refs layout** — `refs/skills/<name>` → `refs/assets/skill/<name>`; `refs/skill-tags/<name>/v…` → `refs/asset-tags/skill/<name>/v…`. Agents live under `refs/assets/agent/<name>` and `refs/asset-tags/agent/<name>/v…`.
+- **State file** — `skill.lock` is gone; consumers use `assets.json`.
+- **Indexer (SkillHub)** — now indexes both kinds from `refs/assets/<kind>/<name>` and tag refs under `refs/asset-tags/<kind>/<name>/v…`.
+
+### Removed
+- `git skill track` — superseded by the `init` + author-under-`.assets/<kind>/<name>/` + `commit` flow.
+- `git skill get` — replaced by `add` + `install`. The standalone `skillhub get` subcommand has also been deleted.
+- `git skill sync` — `install` is now idempotent and re-materializes everything in `assets.json`.
+- `skill.lock` v2 — replaced by `assets.json`.
+
 ## [0.1.1] - 2026-05-22
 
 Initial public release.

@@ -2,26 +2,35 @@
 
 [![CI](https://github.com/niradler/git-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/niradler/git-skill/actions/workflows/ci.yml)
 
-Git-native skill versioning. Track, version, diff, and sync AI agent skills using git's own object model.
+Git-native versioning for AI agent assets — **skills** and **agents** — using git's own object model.
 
 Inspired by [Building on Git's Primitives](https://remenos.codes/building-on-gits-primitives/) and [git-native-issue](https://github.com/remenoscodes/git-native-issue).
 
 ## Why
 
-Skills — the instruction bundles that guide AI agents — are proliferating fast. Every team customizes them, every agent platform ships its own set, and there's no versioning, no diffing, no collaboration model. You drop a folder somewhere and hope for the best.
+AI agent assets — instruction bundles, sub-agents, prompt templates — are proliferating fast. Every team customizes them, every platform ships its own set, and there's no versioning, no diffing, no collaboration model. You drop a folder somewhere and hope for the best.
 
-Git already solved this for code. Skills are directories of text files. The infrastructure is already there.
+Git already solved this for code. Assets are directories of text files. The infrastructure is already there.
 
 ## How it works
 
-Skills are stored as git tree objects under `refs/skills/<name>`. Each change is a commit. Versions are tagged refs. Sync is push/fetch. The entire "package manager" is git.
+Assets are stored as git tree objects under `refs/assets/<kind>/<name>`. Each change is a commit. Versions are tagged refs under `refs/asset-tags/<kind>/<name>/v<semver>`. Sync is push/fetch. The entire "package manager" is git.
 
 ```
-refs/skills/frontend-design          → latest commit
-refs/skill-tags/frontend-design/v1.0 → tagged release
+refs/assets/skill/code-review              → latest commit
+refs/asset-tags/skill/code-review/v1.0.0   → tagged release
+refs/assets/agent/security-auditor         → latest commit
+refs/asset-tags/agent/security-auditor/v0.3.0
 ```
 
-No database. No server. No registry API. Three plumbing commands to create a skill, one format string to read its state.
+Two kinds today:
+
+| Kind  | Marker file | Materializes as              |
+|-------|-------------|------------------------------|
+| skill | `SKILL.md`  | full directory tree          |
+| agent | `AGENT.md`  | single marker file at target |
+
+No database. No server. No registry API. The plumbing is `hash-object`, `mktree`, `commit-tree`, `update-ref`. Reading the source teaches you how git works.
 
 ## Install
 
@@ -39,74 +48,153 @@ sudo mv git-skill /usr/local/bin/
 git skill list
 ```
 
-Requires Go 1.22+ and git 2.x. Tested on Linux and macOS. Windows works for everything except agent-directory symlinks (which need developer mode or admin privileges).
+The same binary serves three roles based on its invocation name:
 
-## Usage
+| Binary name | Default kind | Notes |
+|-------------|--------------|-------|
+| `git-skill` | `skill`      | Skill-focused commands |
+| `git-agent` | `agent`      | Agent-focused commands |
+| `git-asset` | (none)       | Kind-agnostic; `--kind` flag required for ambiguous calls |
+
+Symlink or copy the same `git-skill` binary to `git-agent` / `git-asset` to enable all three.
+
+Requires Go 1.22+ and git 2.x. Tested on Linux, macOS, and Windows. Windows symlinks need developer mode or admin; otherwise the tool falls back to junction or copy.
+
+## Quickstart — producer
+
+Track and publish a skill from your repo.
 
 ```bash
-# Create a new skill
-git skill init my-skill "A skill that does cool things"
+# 1. Scaffold assets.json + .gitignore entries
+git skill init
 
-# Edit it
-vim .skills/my-skill/SKILL.md
+# 2. Author a skill under .assets/skill/<name>/ with a SKILL.md
+mkdir -p .assets/skill/code-review
+$EDITOR .assets/skill/code-review/SKILL.md
 
-# Commit a snapshot
-git skill commit my-skill -m "Add error handling guidance"
+# 3. Snapshot it into refs/assets/skill/code-review
+git skill commit code-review -m "initial cut"
 
-# See history
-git skill log my-skill
+# 4. Tag a release
+git skill tag code-review 1.0.0
 
-# Diff versions
-git skill diff my-skill
-
-# Tag a release
-git skill tag my-skill 1.0.0
-
-# Push to remote
+# 5. Push refs and tags to a remote
 git skill push origin
-
-# Fetch from remote (another machine)
-git skill fetch origin
-
-# Install a skill to a target directory
-git skill install my-skill@v1.0.0 /path/to/agent/skills/
-
-# List everything
-git skill list
 ```
 
-## Format Spec
+Authoring an **agent** is the same flow with `git-agent` and an `AGENT.md` marker.
 
-The real deliverable is [SKILL-FORMAT.md](./SKILL-FORMAT.md) — a standalone specification for storing skills in git, independent of this tool. If the community adopts the format, skills become portable across platforms.
+## Quickstart — consumer
+
+Install someone else's asset into your repo.
+
+```bash
+# 1. Scaffold consumer state
+git skill init
+
+# 2. Add a skill from a remote, pinning to a semver spec
+git skill add acme/code-review@^1.0.0 \
+    --from https://github.com/acme/skills
+
+# 3. Materialize all assets in assets.json into runtime paths
+git skill install
+```
+
+`assets.json` now records the resolved commit. Commit it alongside your code — anyone who clones your repo can run `git skill install` and get the exact same trees back.
+
+To upgrade later:
+
+```bash
+git skill update code-review     # re-resolve within the existing spec
+git skill remove code-review     # drop it
+git skill discover https://github.com/acme/skills  # list what's available
+```
+
+## assets.json
+
+A single file at the repo root. Carries both **intent** (what you asked for) and **resolution** (what you got):
+
+```json
+{
+  "version": 1,
+  "assets": {
+    "skill": {
+      "code-review": {
+        "remote": "https://github.com/acme/skills",
+        "spec": "^1.0.0",
+        "version": "1.2.0",
+        "commit": "9f3c1a…",
+        "canonical": ".assets/skill/code-review",
+        "runtimes": ["claude"]
+      }
+    },
+    "agent": { … }
+  }
+}
+```
+
+- Check it into git.
+- `install` reads `commit` and restores the working tree verbatim.
+- `update` re-resolves `spec` and rewrites `version` + `commit`.
+
+## Runtimes
+
+`runtimes` determines where each asset is materialized. Built-in targets cover the common agent platforms:
+
+| Runtime  | Skill target                         | Agent target                              |
+|----------|--------------------------------------|-------------------------------------------|
+| claude   | `.claude/skills/<name>/`             | `.claude/agents/<name>.md`                |
+| cursor   | `.cursor/skills/<name>/`             | `.cursor/agents/<name>.md`                |
+| codex    | `.codex/skills/<name>/`              | `.codex/agents/<name>.md`                 |
+| opencode | `.opencode/skills/<name>/`           | `.opencode/agents/<name>.md`              |
+
+Skills materialize as full trees; agents as the single `AGENT.md` marker. On Unix the tool prefers relative symlinks back to the canonical tree under `.assets/`. On Windows it falls back to junctions or full copies.
+
+## Commands
+
+```
+init                  scaffold assets.json + .gitignore block
+commit <name>         snapshot canonical tree into refs/assets/<kind>/<name>
+tag <name> <semver>   tag a commit as v<semver>
+push <remote>         push refs/assets/<kind>/* and refs/asset-tags/<kind>/*
+fetch <remote>        fetch the mirror
+
+list                  enumerate local refs/assets with latest tag
+log <name>            history of refs/assets/<kind>/<name>
+diff <name> A B       diff two tagged versions
+show <name>           metadata + tag list
+
+add <ns>/<name>[@spec] --from <url>   onboard remote asset → assets.json
+update [<name>]       re-resolve spec → new version+commit, materialize
+remove <name>         drop from assets.json + delete canonical + runtime paths
+install               materialize every asset in assets.json
+discover <url>        enumerate remote assets
+```
+
+Run with `--help` for full flag listings.
+
+## Asset-Kind trailer
+
+Every commit written by `commit` includes a trailer identifying the kind:
+
+```
+Asset-Kind: skill
+```
+
+This makes the commit self-describing — any indexer or downstream tool can recover the kind from the commit alone without consulting refs.
 
 ## Design Principles
 
 1. **Don't build what git already provides.** Versioning, sync, merge, identity, history — it's all there.
-2. **Plumbing, not porcelain.** The tool uses `hash-object`, `mktree`, `commit-tree`, `update-ref`. Reading the source teaches you how git works.
+2. **Plumbing, not porcelain.** The tool composes `hash-object`, `mktree`, `commit-tree`, `update-ref`. Reading the source teaches you how git works.
 3. **The spec is the contribution.** The CLI is a reference implementation. The format is what matters.
-
-## Using git-skill as an AI agent skill
-
-This repo ships a ready-to-install skill that teaches AI agents (Claude, Cursor, etc.) how to use git-skill. Track and push it from this repo:
-
-```bash
-git skill track git-skill ./skill
-git skill tag git-skill 0.1.0
-git skill push origin
-```
-
-Then consumers can install it:
-
-```bash
-git skill get https://github.com/niradler/git-skill git-skill@v0.1.0 .claude/skills/
-```
 
 ## Documentation
 
 - [SKILL-FORMAT.md](./SKILL-FORMAT.md) — storage format specification
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — CLI vs platform separation
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — how to contribute
-- [docs/using-git-skill-with-github.md](./docs/using-git-skill-with-github.md) — full tutorial
+- [CHANGELOG.md](./CHANGELOG.md) — release notes
 
 ## License
 
