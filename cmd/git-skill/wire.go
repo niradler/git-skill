@@ -31,6 +31,9 @@ func init() {
 	register("diff", func(p Profile, args []string, stdout, stderr io.Writer) error {
 		return cmdcommands.Diff(toCmdProfile(p), args, stdout, stderr)
 	})
+	register("show", func(p Profile, args []string, stdout, stderr io.Writer) error {
+		return cmdcommands.Show(toCmdProfile(p), args, stdout, stderr)
+	})
 }
 
 func toCmdProfile(p Profile) cmdcommands.Profile {
