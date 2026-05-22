@@ -151,15 +151,3 @@ func removeExisting(path string) error {
 	return os.Remove(path)
 }
 
-// TODO(task-8): remove these stubs when fs/copy.go lands.
-
-// CopyTree recursively copies src to dst. The filter func (if non-nil) is
-// called for each entry; returning false skips it.
-func CopyTree(src, dst string, _ func(string) bool) error {
-	return fmt.Errorf("CopyTree not implemented yet")
-}
-
-// CopyFile copies a single file from src to dst.
-func CopyFile(src, dst string) error {
-	return fmt.Errorf("CopyFile not implemented yet")
-}
