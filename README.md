@@ -158,6 +158,24 @@ git skill add code-review --from … --runtime claude --target claude=.custom/sk
 
 Skills materialize as full trees; agent fan-outs depend on the runtime (Claude: `AGENT.md`; Codex: `agent.toml`). On Unix the tool prefers relative symlinks back to the canonical tree. On Windows it falls back to junctions or full copies.
 
+### Asset manifest (`git-skill.yaml`)
+
+Optional. Lives at the root of the canonical tree and lets the asset author declare per-runtime `from`/`to` overrides — or extend `git-skill` to runtimes that aren't in the built-in registry — without consumers needing to set `--target`.
+
+```yaml
+# git-skill.yaml at the root of the asset tree
+kind: agent   # optional author hint
+runtimes:
+  claude:
+    from: prompts/reviewer.md
+    to: .claude/agents/<name>.md
+  custom-tool:                  # not in the built-in registry
+    from: src/<name>.txt
+    to: .custom-tool/<name>/
+```
+
+Resolution precedence (low → high): registry < manifest < lock entry override. `<name>` placeholders are substituted in both `from` and `to`.
+
 Canonical trees live at `skills/<name>/` and `agents/<name>/` by default (configurable via `config.skillsRoot` / `config.agentsRoot` in `assets.json`). PRs to add new runtimes are welcome; see [`internal/runtimes/registry.go`](./internal/runtimes/registry.go).
 
 ## Commands

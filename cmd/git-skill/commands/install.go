@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/niradler/git-skill/internal/assetignore"
 	xfs "github.com/niradler/git-skill/internal/fs"
 	"github.com/niradler/git-skill/internal/git"
 	"github.com/niradler/git-skill/internal/gitops"
 	"github.com/niradler/git-skill/internal/kind"
+	"github.com/niradler/git-skill/internal/manifest"
 	"github.com/niradler/git-skill/internal/refs"
 	"github.com/niradler/git-skill/internal/runtimes"
 	"github.com/niradler/git-skill/internal/state"
@@ -76,10 +78,14 @@ func installOne(repoRoot string, st *state.State, k kind.Kind, name string, e st
 	if err != nil {
 		return fmt.Errorf("load .assetignore: %w", err)
 	}
+	mf, err := manifest.Load(canonAbs)
+	if err != nil {
+		return fmt.Errorf("load %s: %w", manifest.Filename, err)
+	}
 	// Iterate in deterministic order so logs and side effects are stable.
 	for _, rt := range sortedRuntimes(e.Runtimes) {
 		override := e.Runtimes[rt]
-		mapping, err := resolveMapping(rt, k, name, override)
+		mapping, err := resolveMapping(rt, k, name, mf, override)
 		if err != nil {
 			return err
 		}
@@ -91,18 +97,37 @@ func installOne(repoRoot string, st *state.State, k kind.Kind, name string, e st
 	return nil
 }
 
-// resolveMapping returns the effective Mapping for a runtime: registry
-// default with any per-entry override (lock file) layered on top.
-func resolveMapping(rt string, k kind.Kind, name string, override state.RuntimeOverride) (runtimes.Mapping, error) {
-	base, err := runtimes.Resolve(rt, k, name)
-	if err != nil {
-		return runtimes.Mapping{}, err
+// resolveMapping returns the effective Mapping for a runtime by layering,
+// from lowest to highest precedence: registry default → asset manifest
+// (git-skill.yaml) → lock entry override (assets.json runtimes.<name>).
+//
+// If the runtime is not in the built-in registry, the manifest must
+// declare at least a To for that runtime; otherwise resolution fails
+// with the registry's "unknown runtime" error. An empty From defaults
+// to "." (the whole canonical tree), matching the registry convention.
+//
+// "<name>" placeholders in override values are substituted with name
+// to match registry behavior, so consumers can write paths like
+// ".custom/<name>/" in --target or assets.json.
+func resolveMapping(rt string, k kind.Kind, name string, mf *manifest.Manifest, override state.RuntimeOverride) (runtimes.Mapping, error) {
+	base, regErr := runtimes.Resolve(rt, k, name)
+	if regErr != nil {
+		mapping, ok := mf.Mapping(rt, name)
+		if !ok {
+			return runtimes.Mapping{}, regErr
+		}
+		if mapping.To == "" {
+			return runtimes.Mapping{}, fmt.Errorf("%s declares runtime %q without 'to'; cannot materialize", manifest.Filename, rt)
+		}
+		base = mapping
+	} else {
+		base = manifest.Apply(base, mf, rt, name)
 	}
 	if override.From != "" {
-		base.From = override.From
+		base.From = strings.ReplaceAll(override.From, "<name>", name)
 	}
 	if override.To != "" {
-		base.To = override.To
+		base.To = strings.ReplaceAll(override.To, "<name>", name)
 	}
 	return base, nil
 }

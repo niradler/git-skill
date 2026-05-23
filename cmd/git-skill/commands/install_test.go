@@ -5,14 +5,26 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/niradler/git-skill/internal/git"
 	"github.com/niradler/git-skill/internal/kind"
+	"github.com/niradler/git-skill/internal/manifest"
 	"github.com/niradler/git-skill/internal/state"
 )
 
 func makeUpstreamSkill(t *testing.T, name string) (string, string) {
+	return makeUpstreamSkillFiles(t, name, map[string]string{
+		"SKILL.md":  "---\nname: " + name + "\n---\n# " + name,
+		"extra.txt": "payload",
+	})
+}
+
+// makeUpstreamSkillFiles seeds an upstream skill repo with arbitrary files
+// at the root of the asset tree. Used by tests that need to ship extras
+// like git-skill.yaml or runtime-specific source files.
+func makeUpstreamSkillFiles(t *testing.T, name string, files map[string]string) (string, string) {
 	t.Helper()
 	dir := t.TempDir()
 	for _, args := range [][]string{
@@ -31,8 +43,13 @@ func makeUpstreamSkill(t *testing.T, name string) (string, string) {
 	os.Chdir(dir)
 	defer os.Chdir(wd)
 	os.MkdirAll("src", 0755)
-	os.WriteFile("src/SKILL.md", []byte("---\nname: "+name+"\n---\n# "+name), 0644)
-	os.WriteFile("src/extra.txt", []byte("payload"), 0644)
+	for path, body := range files {
+		full := filepath.Join("src", path)
+		if d := filepath.Dir(full); d != "." {
+			os.MkdirAll(d, 0755)
+		}
+		os.WriteFile(full, []byte(body), 0644)
+	}
 	tree, _ := git.WriteTreeFromDir(filepath.Join(dir, "src"))
 	commit, _ := git.CommitTree(tree, "init")
 	_ = git.UpdateRef("refs/assets/skill/"+name, commit)
@@ -264,5 +281,281 @@ func TestInstallRejectsMissingCommit(t *testing.T) {
 	err := Install(profileSkillOnly, nil, &bytes.Buffer{}, &bytes.Buffer{})
 	if err == nil {
 		t.Errorf("expected error on entry with empty commit")
+	}
+}
+
+// Manifest override: git-skill.yaml in the asset tree redirects the
+// claude runtime's To path. The canonical materializes as usual but
+// the fan-out lands at the manifest-declared path.
+func TestInstall_ManifestOverridesRegistry(t *testing.T) {
+	upstream, commit := makeUpstreamSkillFiles(t, "acme/x", map[string]string{
+		"SKILL.md":        "---\nname: acme/x\n---\n# acme/x",
+		manifest.Filename: "runtimes:\n  claude:\n    to: .alt/skills/<name>/\n",
+	})
+
+	consumer := t.TempDir()
+	wd, _ := os.Getwd()
+	os.Chdir(consumer)
+	defer os.Chdir(wd)
+	exec.Command("git", "init", "-q").Run()
+	exec.Command("git", "config", "core.autocrlf", "false").Run()
+
+	st := state.New()
+	st.Set(kind.Skill, "acme/x", state.Entry{
+		Spec:      "v1.0.0",
+		Remote:    upstream,
+		Runtimes:  map[string]state.RuntimeOverride{"claude": {}},
+		Version:   "v1.0.0",
+		Commit:    commit,
+		Canonical: "skills/acme/x",
+	})
+	if err := st.Write(consumer); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Install(profileSkillOnly, nil, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if _, err := os.Stat(".alt/skills/acme/x/SKILL.md"); err != nil {
+		t.Errorf("manifest-declared path not materialized: %v", err)
+	}
+	if _, err := os.Stat(".claude/skills/acme/x/SKILL.md"); err == nil {
+		t.Errorf("registry default path should not exist when overridden by manifest")
+	}
+}
+
+// Manifest-only runtime: a runtime not registered in the built-in
+// registry can still materialize when the manifest provides a full
+// From+To mapping.
+func TestInstall_ManifestOnlyRuntime(t *testing.T) {
+	upstream, commit := makeUpstreamSkillFiles(t, "acme/x", map[string]string{
+		"SKILL.md":        "---\nname: acme/x\n---\n# acme/x",
+		manifest.Filename: "runtimes:\n  future:\n    from: .\n    to: .future/skills/<name>/\n",
+	})
+
+	consumer := t.TempDir()
+	wd, _ := os.Getwd()
+	os.Chdir(consumer)
+	defer os.Chdir(wd)
+	exec.Command("git", "init", "-q").Run()
+	exec.Command("git", "config", "core.autocrlf", "false").Run()
+
+	st := state.New()
+	st.Set(kind.Skill, "acme/x", state.Entry{
+		Spec:      "v1.0.0",
+		Remote:    upstream,
+		Runtimes:  map[string]state.RuntimeOverride{"future": {}},
+		Version:   "v1.0.0",
+		Commit:    commit,
+		Canonical: "skills/acme/x",
+	})
+	if err := st.Write(consumer); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Install(profileSkillOnly, nil, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if _, err := os.Stat(".future/skills/acme/x/SKILL.md"); err != nil {
+		t.Errorf("manifest-only runtime path not materialized: %v", err)
+	}
+}
+
+// Lock override beats manifest: when assets.json declares a To and
+// the manifest also declares one, the lock entry wins.
+func TestInstall_LockOverrideBeatsManifest(t *testing.T) {
+	upstream, commit := makeUpstreamSkillFiles(t, "acme/x", map[string]string{
+		"SKILL.md":        "---\nname: acme/x\n---\n# acme/x",
+		manifest.Filename: "runtimes:\n  claude:\n    to: .alt/skills/<name>/\n",
+	})
+
+	consumer := t.TempDir()
+	wd, _ := os.Getwd()
+	os.Chdir(consumer)
+	defer os.Chdir(wd)
+	exec.Command("git", "init", "-q").Run()
+	exec.Command("git", "config", "core.autocrlf", "false").Run()
+
+	st := state.New()
+	st.Set(kind.Skill, "acme/x", state.Entry{
+		Spec:      "v1.0.0",
+		Remote:    upstream,
+		Runtimes:  map[string]state.RuntimeOverride{"claude": {To: ".lock/skills/<name>/"}},
+		Version:   "v1.0.0",
+		Commit:    commit,
+		Canonical: "skills/acme/x",
+	})
+	if err := st.Write(consumer); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Install(profileSkillOnly, nil, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if _, err := os.Stat(".lock/skills/acme/x/SKILL.md"); err != nil {
+		t.Errorf("lock override path not materialized: %v", err)
+	}
+	if _, err := os.Stat(".alt/skills/acme/x/SKILL.md"); err == nil {
+		t.Errorf("manifest path should not exist when lock override is set")
+	}
+}
+
+// Malformed manifest at install time: the install bubbles up the
+// parse failure rather than silently ignoring the file.
+func TestInstall_MalformedManifestFails(t *testing.T) {
+	upstream, commit := makeUpstreamSkillFiles(t, "acme/x", map[string]string{
+		"SKILL.md":        "---\nname: acme/x\n---\n# acme/x",
+		manifest.Filename: "runtimes: { not closed\n",
+	})
+
+	consumer := t.TempDir()
+	wd, _ := os.Getwd()
+	os.Chdir(consumer)
+	defer os.Chdir(wd)
+	exec.Command("git", "init", "-q").Run()
+	exec.Command("git", "config", "core.autocrlf", "false").Run()
+
+	st := state.New()
+	st.Set(kind.Skill, "acme/x", state.Entry{
+		Spec:      "v1.0.0",
+		Remote:    upstream,
+		Runtimes:  map[string]state.RuntimeOverride{"claude": {}},
+		Version:   "v1.0.0",
+		Commit:    commit,
+		Canonical: "skills/acme/x",
+	})
+	if err := st.Write(consumer); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Install(profileSkillOnly, nil, &bytes.Buffer{}, &bytes.Buffer{}); err == nil {
+		t.Error("expected install to fail on malformed manifest")
+	}
+}
+
+// Lock override's From field also goes through <name> substitution,
+// matching the registry/manifest convention. This locks behavior of
+// the override.From branch in resolveMapping.
+func TestInstall_LockOverrideFromSubstitution(t *testing.T) {
+	upstream, commit := makeUpstreamSkillFiles(t, "acme/x", map[string]string{
+		"SKILL.md":                 "---\nname: acme/x\n---\n# canonical",
+		"variants/acme/x/SKILL.md": "---\nname: acme/x\n---\n# variant",
+	})
+
+	consumer := t.TempDir()
+	wd, _ := os.Getwd()
+	os.Chdir(consumer)
+	defer os.Chdir(wd)
+	exec.Command("git", "init", "-q").Run()
+	exec.Command("git", "config", "core.autocrlf", "false").Run()
+
+	st := state.New()
+	st.Set(kind.Skill, "acme/x", state.Entry{
+		Spec:   "v1.0.0",
+		Remote: upstream,
+		Runtimes: map[string]state.RuntimeOverride{"claude": {
+			From: "variants/<name>",
+			To:   ".claude/skills/<name>/",
+		}},
+		Version:   "v1.0.0",
+		Commit:    commit,
+		Canonical: "skills/acme/x",
+	})
+	if err := st.Write(consumer); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Install(profileSkillOnly, nil, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	got, err := os.ReadFile(".claude/skills/acme/x/SKILL.md")
+	if err != nil {
+		t.Fatalf("expected fan-out from substituted From: %v", err)
+	}
+	if !strings.Contains(string(got), "# variant") {
+		t.Errorf("expected the variant SKILL.md, got %q", string(got))
+	}
+}
+
+// A manifest-only runtime (not in the registry) without a `to` cannot
+// materialize, and install must surface that error. manifest.Load
+// already rejects entries with neither from nor to, so this covers the
+// case where `from` is set but `to` is empty — which install.go's
+// resolveMapping rejects at line "mapping.To == ”".
+func TestInstall_ManifestOnlyRuntimeMissingToFails(t *testing.T) {
+	upstream, commit := makeUpstreamSkillFiles(t, "acme/x", map[string]string{
+		"SKILL.md":        "---\nname: acme/x\n---\n# acme/x",
+		manifest.Filename: "runtimes:\n  future:\n    from: .\n",
+	})
+
+	consumer := t.TempDir()
+	wd, _ := os.Getwd()
+	os.Chdir(consumer)
+	defer os.Chdir(wd)
+	exec.Command("git", "init", "-q").Run()
+	exec.Command("git", "config", "core.autocrlf", "false").Run()
+
+	st := state.New()
+	st.Set(kind.Skill, "acme/x", state.Entry{
+		Spec:      "v1.0.0",
+		Remote:    upstream,
+		Runtimes:  map[string]state.RuntimeOverride{"future": {}},
+		Version:   "v1.0.0",
+		Commit:    commit,
+		Canonical: "skills/acme/x",
+	})
+	if err := st.Write(consumer); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Install(profileSkillOnly, nil, &bytes.Buffer{}, &bytes.Buffer{}); err == nil {
+		t.Error("expected install to fail when manifest-only runtime has no 'to'")
+	}
+}
+
+// Remove must clean up manifest-only fan-out paths. This proves the
+// load-before-delete ordering in remove.go: the manifest is read while
+// the canonical tree still exists, so the cleanup loop knows where
+// .future/skills/acme/x/ was materialized.
+func TestRemove_CleansUpManifestOnlyRuntime(t *testing.T) {
+	upstream, commit := makeUpstreamSkillFiles(t, "acme/x", map[string]string{
+		"SKILL.md":        "---\nname: acme/x\n---\n# acme/x",
+		manifest.Filename: "runtimes:\n  future:\n    from: .\n    to: .future/skills/<name>/\n",
+	})
+
+	consumer := t.TempDir()
+	wd, _ := os.Getwd()
+	os.Chdir(consumer)
+	defer os.Chdir(wd)
+	exec.Command("git", "init", "-q").Run()
+	exec.Command("git", "config", "core.autocrlf", "false").Run()
+
+	st := state.New()
+	st.Set(kind.Skill, "acme/x", state.Entry{
+		Spec:      "v1.0.0",
+		Remote:    upstream,
+		Runtimes:  map[string]state.RuntimeOverride{"future": {}},
+		Version:   "v1.0.0",
+		Commit:    commit,
+		Canonical: "skills/acme/x",
+	})
+	if err := st.Write(consumer); err != nil {
+		t.Fatal(err)
+	}
+	if err := Install(profileSkillOnly, nil, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if _, err := os.Stat(".future/skills/acme/x/SKILL.md"); err != nil {
+		t.Fatalf("precondition: install should materialize manifest-only path: %v", err)
+	}
+
+	if err := Remove(profileSkillOnly, []string{"acme/x"}, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+	if _, err := os.Stat(".future/skills/acme/x"); !os.IsNotExist(err) {
+		t.Errorf("manifest-only fan-out path should be removed, got err=%v", err)
+	}
+	if _, err := os.Stat("skills/acme/x"); !os.IsNotExist(err) {
+		t.Errorf("canonical tree should be removed, got err=%v", err)
 	}
 }

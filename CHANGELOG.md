@@ -19,6 +19,7 @@ All notable changes to git-skill are documented here. Format follows [Keep a Cha
 - **`.assetignore`** — gitignore-style filter applied during copy materialization (dev-mode symlinks see the full tree).
 - **Built-in runtime registry** — `claude`, `cursor`, `codex`, `opencode`. Each entry is now a `{from, to}` mapping; trailing `/` on `to` means directory fanout, no slash means single-file. Adds `codex:agent` default (`agent.toml` → `.codex/agents/<name>.toml`).
 - **`--target <runtime>=<path>`** flag on `git skill add` — override the install target for a runtime; the override is persisted into `assets.json`.
+- **`git-skill.yaml` asset manifest** — optional file at the root of a canonical asset tree. Authors can declare per-runtime `from`/`to` overrides without forcing consumers to set `--target`, or extend `git-skill` to new runtimes not in the built-in registry. Resolution precedence (low → high): registry < manifest < lock entry override. `<name>` placeholders are substituted in both `from` and `to`.
 - **Dev mode** — `e.Dev == true` preserves local edits to the canonical tree on re-install. Non-dev installs always refresh from the pinned commit.
 - **Release E2E suite** (`test/e2e/release/`) — 16 tests covering flows, contracts, platform, errors, and idempotency on a real git repo.
 
