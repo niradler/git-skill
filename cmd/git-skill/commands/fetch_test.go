@@ -10,7 +10,7 @@ import (
 )
 
 func TestFetchPullsAssetAndTagRefs(t *testing.T) {
-	// 1. Producer repo — create asset + tag and push to bare remote.
+	// 1. Producer repo - create asset + tag and push to bare remote.
 	bare := t.TempDir()
 	if err := exec.Command("git", "init", "--bare", bare).Run(); err != nil {
 		t.Fatalf("init bare: %v", err)
@@ -34,7 +34,7 @@ func TestFetchPullsAssetAndTagRefs(t *testing.T) {
 		t.Fatalf("Push: %v", err)
 	}
 
-	// 2. Consumer repo — separate clone-like repo, fetch from same bare.
+	// 2. Consumer repo - separate clone-like repo, fetch from same bare.
 	consumer := gitInit(t)
 	os.Chdir(consumer)
 	defer os.Chdir(wd)

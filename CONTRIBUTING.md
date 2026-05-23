@@ -32,28 +32,28 @@ git config --global user.name "Your Name"
 ## Project layout
 
 ```
-cmd/git-skill/main.go        — entry point; argv[0] profile dispatch
-cmd/git-skill/dispatch.go    — Run() routes name → command function
-cmd/git-skill/wire.go        — registers each command in the dispatch table
-cmd/git-skill/commands/      — one file per subcommand (add, install, remove, …)
-internal/git/plumbing.go     — thin wrappers around git plumbing commands
-internal/gitops/             — Asset-Kind trailer, fetch, ls-remote discovery
-internal/skill/meta.go       — SKILL.md / AGENT.md parsing and scaffolding
-internal/kind/kind.go        — 4-tier kind discriminator (lock/trailer/frontmatter/filename)
-internal/refs/refs.go        — refs/assets/<kind>/<name> naming conventions
-internal/state/state.go      — assets.json serialization (intent + resolution)
-internal/manifest/manifest.go — git-skill.yaml asset manifest
-internal/runtimes/           — built-in registry + user/project runtimes.yaml
-internal/fs/                 — cross-platform symlink / junction / copy fan-out
-internal/assetignore/        — .assetignore gitignore-style filter
-internal/semver/semver.go    — SemVer 2.0 comparator and spec parser
+cmd/git-skill/main.go        - entry point; argv[0] profile dispatch
+cmd/git-skill/dispatch.go    - Run() routes name → command function
+cmd/git-skill/wire.go        - registers each command in the dispatch table
+cmd/git-skill/commands/      - one file per subcommand (add, install, remove, ...)
+internal/git/plumbing.go     - thin wrappers around git plumbing commands
+internal/gitops/             - Asset-Kind trailer, fetch, ls-remote discovery
+internal/skill/meta.go       - SKILL.md / AGENT.md parsing and scaffolding
+internal/kind/kind.go        - 4-tier kind discriminator (lock/trailer/frontmatter/filename)
+internal/refs/refs.go        - refs/assets/<kind>/<name> naming conventions
+internal/state/state.go      - assets.json serialization (intent + resolution)
+internal/manifest/manifest.go - git-skill.yaml asset manifest
+internal/runtimes/           - built-in registry + user/project runtimes.yaml
+internal/fs/                 - cross-platform symlink / junction / copy fan-out
+internal/assetignore/        - .assetignore gitignore-style filter
+internal/semver/semver.go    - SemVer 2.0 comparator and spec parser
 ```
 
 Runtime dependencies are minimal: the Go stdlib, the `git` binary, plus `gopkg.in/yaml.v3` (manifest + runtimes.yaml parsing) and `golang.org/x/sys` (Windows symlink/junction APIs).
 
 ## Design principles
 
-1. **Don't duplicate git.** Versioning, diffing, transport, history — git already provides all of this. git-skill adds a thin layer of conventions on top.
+1. **Don't duplicate git.** Versioning, diffing, transport, history - git already provides all of this. git-skill adds a thin layer of conventions on top.
 2. **Plumbing, not porcelain.** The code uses `hash-object`, `mktree`, `commit-tree`, `update-ref`. If you need a new operation, look for the right plumbing command rather than parsing porcelain output.
 3. **The spec is the contribution.** `SKILL-FORMAT.md` is the real deliverable. The CLI is a reference implementation. Changes to the format require updating the spec.
 4. **No external dependencies.** Keep it that way unless there's a compelling reason.

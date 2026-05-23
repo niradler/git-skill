@@ -14,7 +14,7 @@ import (
 //
 // Deviation from plan: plan asked for a byte-compare of the JSON, which is brittle
 // across Go map iteration order. Instead we do a structural compare via json.Unmarshal
-// into map[string]any and check key presence — less fragile and equally correct.
+// into map[string]any and check key presence - less fragile and equally correct.
 func TestB1_AssetsJSONRoundTrip(t *testing.T) {
 	// Build a producer with a skill, tagged and pushed to a bare
 	producer := newRepo(t)

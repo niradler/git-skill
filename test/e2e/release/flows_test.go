@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// A1: single-author lifecycle — init, commit, tag, push, add, remove.
+// A1: single-author lifecycle - init, commit, tag, push, add, remove.
 func TestA1_SingleAuthorLifecycle(t *testing.T) {
 	// Producer setup
 	producer := newRepo(t)
@@ -74,7 +74,7 @@ func TestA1_SingleAuthorLifecycle(t *testing.T) {
 	assertFileAbsent(t, filepath.Join(consumer.dir, "skills", "acme", "x", "SKILL.md"))
 	assertFileAbsent(t, filepath.Join(consumer.dir, ".claude", "skills", "acme", "x", "SKILL.md"))
 
-	// Re-read assets.json — entry must be gone
+	// Re-read assets.json - entry must be gone
 	data, _ = os.ReadFile(filepath.Join(consumer.dir, "assets.json"))
 	var top2 map[string]any
 	json.Unmarshal(data, &top2)
@@ -127,7 +127,7 @@ func TestA2_IterateAndUpdate(t *testing.T) {
 	// assets.json must have changed
 	postHash := fileHash(t, filepath.Join(consumer.dir, "assets.json"))
 	if preHash == postHash {
-		t.Errorf("assets.json unchanged after update — expected new commit")
+		t.Errorf("assets.json unchanged after update - expected new commit")
 	}
 
 	// Runtime file must contain new content
@@ -241,10 +241,10 @@ func TestA4_MultiRemote(t *testing.T) {
 }
 
 // A5: dev mode. Producer publishes acme/x. Consumer adds with --dev.
-// Edit canonical SKILL.md — content should reflect edit via symlink/junction/copy.
-// install again — canonical NOT clobbered.
+// Edit canonical SKILL.md - content should reflect edit via symlink/junction/copy.
+// install again - canonical NOT clobbered.
 //
-// In dev mode install preserves local edits to the canonical tree — only
+// In dev mode install preserves local edits to the canonical tree - only
 // non-dev installs refresh canonical from the pinned commit (see installOne
 // in cmd/git-skill/commands/install.go).
 func TestA5_DevMode(t *testing.T) {
@@ -276,13 +276,13 @@ func TestA5_DevMode(t *testing.T) {
 		t.Fatalf("read runtime after dev edit: %v", rerr)
 	}
 
-	// If it's a symlink/junction, content matches. If it's a copy, content is stale — that's acceptable.
+	// If it's a symlink/junction, content matches. If it's a copy, content is stale - that's acceptable.
 	// Document: on Windows, junction is used for directories; the edit propagates automatically.
 	// On non-Windows, a relative symlink propagates the edit.
 	// A copy (fallback) would NOT propagate, but install must not clobber canonical.
 	_ = rtContent // both cases accepted
 
-	// install again — canonical must NOT be clobbered with "original content"
+	// install again - canonical must NOT be clobbered with "original content"
 	_, stderr, err = consumer.runCLI("install")
 	if err != nil {
 		t.Fatalf("install after dev edit: %v\nstderr: %s", err, stderr)

@@ -76,7 +76,7 @@ func Resolve(s Sources) (*Resolution, error) {
 	}
 	if s.Trailer != 0 && s.Frontmatter != 0 && s.Trailer != s.Frontmatter {
 		r.Warnings = append(r.Warnings,
-			fmt.Sprintf("trailer disagrees with frontmatter (trailer=%s, frontmatter=%s) — was the file hand-edited post-commit?",
+			fmt.Sprintf("trailer disagrees with frontmatter (trailer=%s, frontmatter=%s) - was the file hand-edited post-commit?",
 				s.Trailer, s.Frontmatter))
 	}
 	return r, nil

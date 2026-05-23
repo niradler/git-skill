@@ -48,7 +48,7 @@ func Remove(p Profile, args []string, stdout, stderr io.Writer) error {
 	canonAbs := filepath.Join(cwd, entry.Canonical)
 	// Load the manifest before deleting canonical, so we can clean up
 	// fan-out paths declared by manifest-only runtimes. Manifest errors
-	// at this stage are non-fatal — the lock entry still authoritatively
+	// at this stage are non-fatal - the lock entry still authoritatively
 	// lists which runtimes were installed, and stale fan-out is cheap.
 	mf, _ := manifest.Load(canonAbs)
 	if err := os.RemoveAll(canonAbs); err != nil {

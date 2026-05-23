@@ -7,20 +7,20 @@
 
 ## Components
 
-### 1. git-skill (CLI) — this repo
+### 1. git-skill (CLI): this repo
 
-Open-source Go binary. Works with **any** git remote — GitHub, GitLab, self-hosted, or SkillsHub.
+Open-source Go binary. Works with **any** git remote: GitHub, GitLab, self-hosted, or SkillsHub.
 
 **Owns:**
 
-- Local asset storage as git tree objects under `refs/assets/<kind>/<name>`, with two built-in kinds — `skill` and `agent`.
+- Local asset storage as git tree objects under `refs/assets/<kind>/<name>`, with two built-in kinds: `skill` and `agent`.
 - Versioned history via commit chain; tagged releases under `refs/asset-tags/<kind>/<name>/v<semver>`.
 - `Asset-Kind` commit trailer on every snapshot, making commits self-describing.
-- `assets.json` — single committed file carrying both intent (`spec`) and resolution (`version` + `commit`) so a fresh clone + `install` restores the exact working tree.
-- `.assetignore` — gitignore-style filter applied during copy materialization.
+- `assets.json`: single committed file carrying both intent (`spec`) and resolution (`version` + `commit`) so a fresh clone + `install` restores the exact working tree.
+- `.assetignore`: gitignore-style filter applied during copy materialization.
 - Push/fetch over standard git transport (SSH, HTTPS, local path).
-- Cross-platform materialization — Unix relative symlinks; Windows junctions or copy fallback when symlink privilege is unavailable.
-- Three CLI personas via argv[0] dispatch: `git-skill`, `git-agent`, `git-asset` share one binary; the invocation name sets the default kind.
+- Cross-platform materialization: Unix relative symlinks. Windows junctions or copy fallback when symlink privilege is unavailable.
+- Three CLI personas via argv[0] dispatch: `git-skill`, `git-agent`, `git-asset` share one binary. The invocation name sets the default kind.
 - Built-in runtime registry (`claude`, `cursor`, `codex`, `opencode`) plus extension points: per-asset `git-skill.yaml` manifests and user/project `runtimes.yaml` configs.
 
 **Commands:**
@@ -47,20 +47,20 @@ Open-source Go binary. Works with **any** git remote — GitHub, GitLab, self-ho
 
 ---
 
-### 2. SkillsHub (platform) — separate repo
+### 2. SkillsHub (platform): separate repo
 
 Hosted SaaS. Analogous to GitHub for code repos.
 
 **Owns:**
 
-- Asset registry — indexed by `name`, `description`, `kind`, version, author, org.
-- Web UI — browse, search, preview skills and agents.
-- Evals — run an asset against test inputs, track pass rates across versions.
-- Version diff UI — visual diff between two tagged versions.
-- Ratings / quality signals — community trust score, install counts.
-- Org namespacing — `skillshub.io/acme-corp/code-review`.
-- Auth — API tokens for `git skill push skillshub.io/...`.
-- Webhooks — notify downstream when a version is published.
+- Asset registry: indexed by `name`, `description`, `kind`, version, author, org.
+- Web UI: browse, search, preview skills and agents.
+- Evals: run an asset against test inputs, track pass rates across versions.
+- Version diff UI: visual diff between two tagged versions.
+- Ratings / quality signals: community trust score, install counts.
+- Org namespacing: `skillshub.io/acme-corp/code-review`.
+- Auth: API tokens for `git skill push skillshub.io/...`.
+- Webhooks: notify downstream when a version is published.
 - `skills.sh`-compatible directory listing (JSON API).
 
 **Does NOT own:**
@@ -165,12 +165,12 @@ git skill install
 
 **CLI is standalone by design.** A team can use git-skill with a private GitHub repo and never touch SkillsHub. This keeps the open source tool genuinely useful and drives adoption that feeds the platform.
 
-**`assets.json` is the differentiator.** Many package managers install from HEAD on every run. `assets.json` pins exact commit SHAs alongside the semver spec — installs are reproducible, auditable, rollback-able. Evals, compliance reports, and other platform features build on top of this pin.
+**`assets.json` is the differentiator.** Many package managers install from HEAD on every run. `assets.json` pins exact commit SHAs alongside the semver spec, so installs are reproducible, auditable, rollback-able. Evals, compliance reports, and other platform features build on top of this pin.
 
-**Two kinds, one storage shape.** Skills materialize as full directory trees; agents materialize as a single marker file at the runtime target. The storage format and CLI flow are identical — the runtime registry decides how the fan-out happens.
+**Two kinds, one storage shape.** Skills materialize as full directory trees; agents materialize as a single marker file at the runtime target. The storage format and CLI flow are identical. The runtime registry decides how the fan-out happens.
 
 **Layered runtime resolution.** Per-asset overrides live in the lock entry, asset-author overrides in `git-skill.yaml`, repo-wide policy in `<repo>/.git-skill/runtimes.yaml`, machine-wide defaults in `~/.config/git-skill/runtimes.yaml`, factory defaults in the built-in registry. Precedence is fully documented in [`README.md`](./README.md#resolution-precedence).
 
 **Platform adds value the CLI cannot.** Evals require compute and persistent state. Search requires an index. Ratings require a community. None of these belong in a local CLI. The platform owns them cleanly.
 
-**Standard git transport keeps the moat small.** Any team can self-host a bare git repo and use the full CLI feature set. SkillsHub competes on features (evals, UI, discovery) not on lock-in.
+**Standard git transport keeps the moat small.** Any team can self-host a bare git repo and use the full CLI feature set. SkillsHub competes on features (evals, UI, discovery), not on lock-in.

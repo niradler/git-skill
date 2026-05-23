@@ -39,7 +39,7 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 if ! git diff --quiet --exit-code || ! git diff --cached --quiet --exit-code; then
-  echo "error: working tree has uncommitted changes — commit or stash first" >&2
+  echo "error: working tree has uncommitted changes - commit or stash first" >&2
   exit 1
 fi
 
@@ -49,7 +49,7 @@ if [[ "$RELEASE" == "1" ]] && git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; th
 fi
 
 if [[ "$RELEASE" == "1" ]] && ! command -v gh >/dev/null 2>&1; then
-  echo "error: gh CLI not installed — required for --release" >&2
+  echo "error: gh CLI not installed - required for --release" >&2
   exit 1
 fi
 
@@ -103,7 +103,7 @@ awk -v v="$VERSION" '
 ' CHANGELOG.md > "$NOTES_FILE"
 
 if [[ ! -s "$NOTES_FILE" ]]; then
-  echo "warning: no CHANGELOG section for [$VERSION] — using auto-generated notes" >&2
+  echo "warning: no CHANGELOG section for [$VERSION] - using auto-generated notes" >&2
   GH_NOTES_FLAG=(--generate-notes)
 else
   GH_NOTES_FLAG=(--notes-file "$NOTES_FILE")

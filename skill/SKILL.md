@@ -1,6 +1,6 @@
 ---
 name: git-skill
-description: Use git-skill whenever the user is managing, versioning, publishing, sharing, or consuming AI agent skills, especially when they mention .skills/, SKILL.md, skill.lock, "version a skill", "publish a skill", "install a skill", "sync skills", refs/skills/, or want to share skills via git/GitHub. Trigger even when the user doesn't explicitly name the tool — anything that smells like skill versioning, distribution, or reproducible installs across machines falls in scope.
+description: Use git-skill whenever the user is managing, versioning, publishing, sharing, or consuming AI agent skills, especially when they mention .skills/, SKILL.md, skill.lock, "version a skill", "publish a skill", "install a skill", "sync skills", refs/skills/, or want to share skills via git/GitHub. Trigger even when the user doesn't explicitly name the tool - anything that smells like skill versioning, distribution, or reproducible installs across machines falls in scope.
 version: 0.1.0
 license: MIT
 ---
@@ -9,7 +9,7 @@ license: MIT
 
 ## What it is
 
-git-skill is a CLI that treats AI agent skills the way git treats source code. Skills are directories of text files. git-skill stores each one as a versioned, content-addressed git object under a dedicated ref namespace, then leans on standard `git push` / `git fetch` for distribution. No registry, no API server, no separate database — just git.
+git-skill is a CLI that treats AI agent skills the way git treats source code. Skills are directories of text files. git-skill stores each one as a versioned, content-addressed git object under a dedicated ref namespace, then leans on standard `git push` / `git fetch` for distribution. No registry, no API server, no separate database - just git.
 
 It is named `git-skill` so `git skill <cmd>` works out of the box (git auto-discovers subcommands on PATH).
 
@@ -47,7 +47,7 @@ Heuristic: if the conversation is about *managing* skills (as opposed to *writin
 
 A short pre-flight saves a lot of pain later:
 
-1. **Confirm a git repo.** `git rev-parse --is-inside-work-tree` should print `true`. git-skill stores skills under custom refs inside an existing repo — there is no "skill repo" mode.
+1. **Confirm a git repo.** `git rev-parse --is-inside-work-tree` should print `true`. git-skill stores skills under custom refs inside an existing repo - there is no "skill repo" mode.
 2. **Confirm the tool is installed and on PATH.** `git skill version` should print the version. If it errors with "unknown command", the user has not installed git-skill (`go install github.com/niradler/git-skill/cmd/git-skill@latest`).
 3. **Figure out which workflow applies.** Author (`init`, `commit`, `tag`, `push`) vs consumer (`get`, `sync`, `install`). The same user can be both, but for a given task it is one or the other.
 4. **Look at existing state.** `git skill list` shows tracked skills. `cat skill.lock` (if present) shows pinned versions. These tell you whether you are bootstrapping or working with an established setup.
@@ -70,7 +70,7 @@ By convention, skills live at `.skills/<name>/` in the repo and are symlinked in
 The author owns a skill and ships new versions of it.
 
 ```bash
-# Create a new skill — scaffolds SKILL.md and makes the first commit.
+# Create a new skill - scaffolds SKILL.md and makes the first commit.
 git skill init my-skill "A skill that does cool things"
 
 # Edit the scaffolded SKILL.md.
@@ -108,7 +108,7 @@ git skill sync
 # Just install a skill that's already in your local object store.
 git skill install skill-name@v1.0.0 .claude/skills/
 
-# Fetch refs without installing (rare — useful for inspection/diff).
+# Fetch refs without installing (rare - useful for inspection/diff).
 git skill fetch origin
 
 # Limit which agent symlinks get created.
@@ -154,9 +154,9 @@ git skill diff my-skill v1.0.0 v2.0.0   # diff between tagged versions
 }
 ```
 
-`git skill sync` reads this file and reinstalls every entry at the pinned `commit` (not the `version` — tags can move; commit SHAs cannot). This is why the lockfile matters: even if someone moves `v1.0.0` to a new commit upstream, every machine that ran `git skill sync` against the same lock gets identical bytes.
+`git skill sync` reads this file and reinstalls every entry at the pinned `commit` (not the `version` - tags can move; commit SHAs cannot). This is why the lockfile matters: even if someone moves `v1.0.0` to a new commit upstream, every machine that ran `git skill sync` against the same lock gets identical bytes.
 
-The reinstall is atomic: the new tree is materialized in a sibling directory and then renamed into place. Files that were deleted upstream are removed from the local install — this is what makes "same bytes on every machine" actually true.
+The reinstall is atomic: the new tree is materialized in a sibling directory and then renamed into place. Files that were deleted upstream are removed from the local install - this is what makes "same bytes on every machine" actually true.
 
 `dev: true` marks an entry as locally-mutable. `git skill get --dev` does not write a lockfile entry at all (so the consumer is also the author and intends to edit in place). `sync` ignores any `dev: true` entry it finds. Switch to a normal install (`git skill get` without `--dev`) when you're ready to pin a version.
 
@@ -213,7 +213,7 @@ Use this for org-owned or user-owned skills.
 
 Skill content is code-adjacent: it runs through an AI agent and can include shell commands, references to other tools, and bundled scripts. Treat third-party skills with the same care you treat third-party dependencies.
 
-- **Pin to commit SHAs via `skill.lock`.** Never rely on a moving tag alone for trusted skills. Once `git skill get name@v1.0.0` writes the lock, the SHA is what guarantees reproducibility — tags can be force-moved upstream.
+- **Pin to commit SHAs via `skill.lock`.** Never rely on a moving tag alone for trusted skills. Once `git skill get name@v1.0.0` writes the lock, the SHA is what guarantees reproducibility - tags can be force-moved upstream.
 - **Review `skill.lock` diffs.** A diff that changes `commit:` for an existing skill means the upstream content moved. Run `git skill diff <name> <old-sha> <new-sha>` before merging.
 - **Inspect fetched content before installing.** `git skill fetch <remote>` populates the local store without installing. Then `git cat-file -p refs/skills/<name>:SKILL.md` lets you read the body without writing files anywhere.
 - **Be wary of bundled `scripts/` directories.** A skill can ship executables. If you do not need them, install with `--agent claude` (or whatever single agent you use) to keep blast radius small, and audit `scripts/` before running anything.
@@ -221,9 +221,9 @@ Skill content is code-adjacent: it runs through an AI agent and can include shel
 
 ## Common pitfalls
 
-- **Tagging without pushing.** `git skill tag` only updates a local ref. Run `git skill push origin` afterwards — it pushes both `refs/skills/*` and `refs/skill-tags/*`. Plain `git push` would skip them.
+- **Tagging without pushing.** `git skill tag` only updates a local ref. Run `git skill push origin` afterwards - it pushes both `refs/skills/*` and `refs/skill-tags/*`. Plain `git push` would skip them.
 - **Forgetting to commit `skill.lock`.** Without the lockfile in version control, `git skill sync` can't run for the rest of the team. Always treat `skill.lock` like `package-lock.json` or `go.sum`.
-- **Version field vs. tag.** The `version:` line in `SKILL.md` frontmatter is metadata (it becomes a commit trailer). The *actual* versioned ref is only created by `git skill tag <name> <ver>`. They are not auto-synced — bump both.
+- **Version field vs. tag.** The `version:` line in `SKILL.md` frontmatter is metadata (it becomes a commit trailer). The *actual* versioned ref is only created by `git skill tag <name> <ver>`. They are not auto-synced - bump both.
 - **Tracking a directory without SKILL.md.** `git skill track` will refuse. Scaffold it (`git skill init`) or create a SKILL.md by hand first.
 - **Modifying installed skill files in place.** Edits to `.claude/skills/<name>/...` mostly land in the canonical `.skills/<name>` (since they're symlinks), but for non-dev installs the right workflow is to edit in the author repo and re-publish.
 
@@ -240,7 +240,7 @@ If none of these exist but the user is asking about managing skills, start with 
 
 ## References
 
-- [SKILL-FORMAT.md](../SKILL-FORMAT.md) — formal specification of the storage format
-- [ARCHITECTURE.md](../ARCHITECTURE.md) — CLI vs. registry-platform separation
-- [docs/using-git-skill-with-github.md](../docs/using-git-skill-with-github.md) — end-to-end tutorial
-- Source: `cmd/git-skill/main.go` — every command's implementation lives in one file
+- [SKILL-FORMAT.md](../SKILL-FORMAT.md) - formal specification of the storage format
+- [ARCHITECTURE.md](../ARCHITECTURE.md) - CLI vs. registry-platform separation
+- [docs/using-git-skill-with-github.md](../docs/using-git-skill-with-github.md) - end-to-end tutorial
+- Source: `cmd/git-skill/main.go` - every command's implementation lives in one file

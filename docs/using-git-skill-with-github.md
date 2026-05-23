@@ -1,6 +1,6 @@
 # Version-controlling AI agent assets with git-skill and GitHub
 
-If you've used Claude, Cursor, Codex, or any modern coding agent for more than a week, you've probably accumulated a folder of carefully tuned **skills** — system prompts, style guides, code review checklists, debugging protocols — and maybe a few **sub-agents** for specialized tasks. And if you work on a team, you've probably also discovered that those files don't have a story.
+If you've used Claude, Cursor, Codex, or any modern coding agent for more than a week, you've probably accumulated a folder of carefully tuned **skills** - system prompts, style guides, code review checklists, debugging protocols - and maybe a few **sub-agents** for specialized tasks. And if you work on a team, you've probably also discovered that those files don't have a story.
 
 There's no version history. No diff when something changes. No way to pin a known-good revision. No mechanism for "I want the version Alice was using last Tuesday." You drop a folder in `.claude/skills/` and pray nothing drifts.
 
@@ -22,9 +22,9 @@ refs/asset-tags/agent/security-auditor/v0.3.0    → tagged release
 
 The two built-in kinds are `skill` (materializes as a full directory tree at the runtime target) and `agent` (materializes as a single marker file at the target). Every commit carries an `Asset-Kind: skill` or `Asset-Kind: agent` trailer, so a downstream tool can recover the kind from the commit alone.
 
-These refs live in any existing git repository — your dedicated assets repo, your dotfiles, even your main project repo. Push them to GitHub with `git skill push origin` and anyone with read access can `git skill add` + `git skill install` them.
+These refs live in any existing git repository - your dedicated assets repo, your dotfiles, even your main project repo. Push them to GitHub with `git skill push origin` and anyone with read access can `git skill add` + `git skill install` them.
 
-The CLI shells out to git plumbing commands (`hash-object`, `mktree`, `commit-tree`, `update-ref`) and wraps them in a friendly interface. The spec ([SKILL-FORMAT.md](../SKILL-FORMAT.md)) is independent of the implementation — anyone can write a tool that reads and writes the same format.
+The CLI shells out to git plumbing commands (`hash-object`, `mktree`, `commit-tree`, `update-ref`) and wraps them in a friendly interface. The spec ([SKILL-FORMAT.md](../SKILL-FORMAT.md)) is independent of the implementation - anyone can write a tool that reads and writes the same format.
 
 ## Installation
 
@@ -56,7 +56,7 @@ git agent list   # operates on agents
 git asset list --kind skill   # kind-agnostic
 ```
 
-## Your first skill — author side
+## Your first skill - author side
 
 Walk through this in any existing git repository (or create one fresh with `git init`).
 
@@ -81,7 +81,7 @@ description: Guidelines for reviewing pull requests
 
 # Code review checklist
 
-…
+...
 ```
 
 Snapshot it into `refs/assets/skill/code-review` and tag a release:
@@ -150,16 +150,16 @@ git agent add acme/security-auditor@^0.1.0 \
 git agent install
 ```
 
-Agents materialize as a single marker file at the runtime target — Claude expects `AGENT.md` at `.claude/agents/<name>.md`; Codex expects `agent.toml` at `.codex/agents/<name>.toml`. The built-in registry covers both; per-asset overrides live in the asset's `git-skill.yaml`.
+Agents materialize as a single marker file at the runtime target - Claude expects `AGENT.md` at `.claude/agents/<name>.md`; Codex expects `agent.toml` at `.codex/agents/<name>.toml`. The built-in registry covers both; per-asset overrides live in the asset's `git-skill.yaml`.
 
 ## Customizing where assets materialize
 
 Three layers of customization sit on top of the built-in registry. Lowest precedence first:
 
-1. **`~/.config/git-skill/runtimes.yaml`** — your machine-wide defaults.
-2. **`<repo>/.git-skill/runtimes.yaml`** — repo-wide policy, committed alongside `assets.json`.
-3. **`git-skill.yaml` in the asset tree** — author-declared overrides that ship with the asset.
-4. **`--target runtime=path` on `git skill add`** — per-asset override pinned in the lock entry.
+1. **`~/.config/git-skill/runtimes.yaml`** - your machine-wide defaults.
+2. **`<repo>/.git-skill/runtimes.yaml`** - repo-wide policy, committed alongside `assets.json`.
+3. **`git-skill.yaml` in the asset tree** - author-declared overrides that ship with the asset.
+4. **`--target runtime=path` on `git skill add`** - per-asset override pinned in the lock entry.
 
 Example: send `claude` skills to an alternate path repo-wide:
 
@@ -198,7 +198,7 @@ git skill install
 
 ## Inspecting without the CLI
 
-Assets are plain git refs — any git-aware tool reads them natively:
+Assets are plain git refs - any git-aware tool reads them natively:
 
 ```bash
 git cat-file -p refs/assets/skill/code-review

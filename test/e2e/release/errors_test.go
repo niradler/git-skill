@@ -22,7 +22,7 @@ func readAssetsJSON(t *testing.T, dir string) ([]byte, map[string]any) {
 	return data, m
 }
 
-// D1: empty commit on install — hand-write assets.json with no commit field.
+// D1: empty commit on install - hand-write assets.json with no commit field.
 // install must fail; assets.json must not be mutated.
 func TestD1_EmptyCommitOnInstall(t *testing.T) {
 	consumer := newRepo(t)
@@ -61,7 +61,7 @@ func TestD1_EmptyCommitOnInstall(t *testing.T) {
 	}
 }
 
-// D2: invalid --from — file:///nonexistent/path. add must fail; assets.json unchanged.
+// D2: invalid --from - file:///nonexistent/path. add must fail; assets.json unchanged.
 func TestD2_InvalidFrom(t *testing.T) {
 	consumer := newRepo(t)
 	consumer.runCLI("init")
@@ -101,7 +101,7 @@ func TestD3_KindMismatchWarning(t *testing.T) {
 	}
 }
 
-// D4: update with no matching tag — spec ^v2.0.0 against remote with only v1.x.x.
+// D4: update with no matching tag - spec ^v2.0.0 against remote with only v1.x.x.
 // update must fail; assets.json unchanged.
 func TestD4_UpdateNoMatchingTag(t *testing.T) {
 	producer := newRepo(t)
@@ -175,7 +175,7 @@ func TestD5_InstallUsesCommitVerbatim(t *testing.T) {
 	os.RemoveAll(filepath.Join(consumer.dir, "skills"))
 	os.RemoveAll(filepath.Join(consumer.dir, ".claude"))
 
-	// install must succeed using the verbatim pinned commit — no re-resolution
+	// install must succeed using the verbatim pinned commit - no re-resolution
 	_, stderr, err = consumer.runCLI("install")
 	if err != nil {
 		t.Fatalf("install with verbatim commit: %v\n%s", err, stderr)

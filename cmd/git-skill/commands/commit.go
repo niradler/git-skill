@@ -17,7 +17,7 @@ import (
 )
 
 func Commit(p Profile, args []string, stdout, stderr io.Writer) error {
-	// The name argument may appear before or after the flags (e.g. `commit <name> -m …`).
+	// The name argument may appear before or after the flags (e.g. `commit <name> -m ...`).
 	// Standard flag.Parse stops at the first non-flag token, so we separate the name
 	// from the flag arguments up-front: collect all non-flag tokens as positional args
 	// and pass the rest to flag.Parse.
@@ -97,7 +97,7 @@ func Commit(p Profile, args []string, stdout, stderr io.Writer) error {
 }
 
 // resolveCommitKind implements the 4-tier kind discriminator per spec L3/L5.
-//  1. Existing ref kind (refs/assets/<kind>/<name>) — locks kind for life of the asset
+//  1. Existing ref kind (refs/assets/<kind>/<name>) - locks kind for life of the asset
 //  2. --kind flag
 //  3. Frontmatter kind: field
 //  4. Marker filename (SKILL.md / AGENT.md)

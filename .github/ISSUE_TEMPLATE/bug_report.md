@@ -24,4 +24,4 @@ git skill ...
 - OS:
 
 **Additional context**
-Logs, screenshots, related issues — anything that helps.
+Logs, screenshots, related issues - anything that helps.

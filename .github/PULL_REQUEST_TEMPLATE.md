@@ -4,7 +4,7 @@ A short summary of the change.
 
 ## Why
 
-The motivation — what problem this solves, what it enables.
+The motivation - what problem this solves, what it enables.
 
 ## Testing
 

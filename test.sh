@@ -96,7 +96,7 @@ cat > src/SKILL.md <<'EOF'
 name: acme/x
 description: A test skill
 ---
-# acme/x v1.1.0 — updated
+# acme/x v1.1.0 - updated
 EOF
 git-skill commit acme/x -m "v1.1.0" --path src
 git-skill tag acme/x v1.1.0

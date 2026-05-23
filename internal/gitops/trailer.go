@@ -25,7 +25,7 @@ func WriteCommitWithKind(tree, subject string, k kind.Kind, parent string) (stri
 }
 
 // ReadKindTrailer pulls the Asset-Kind trailer from a commit. ok=false when
-// the trailer is absent — callers fall through to the next tier of the
+// the trailer is absent - callers fall through to the next tier of the
 // discriminator (frontmatter, then marker filename).
 func ReadKindTrailer(commitish string) (kind.Kind, bool, error) {
 	body, err := git.Run("log", "-1", "--format=%B", commitish)

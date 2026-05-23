@@ -2,13 +2,13 @@
 
 [![CI](https://github.com/niradler/git-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/niradler/git-skill/actions/workflows/ci.yml)
 
-Git-native versioning for AI agent assets — **skills** and **agents** — using git's own object model.
+Git-native versioning for AI agent assets (**skills** and **agents**) using git's own object model.
 
 Inspired by [Building on Git's Primitives](https://remenos.codes/building-on-gits-primitives/) and [git-native-issue](https://github.com/remenoscodes/git-native-issue).
 
 ## Why
 
-AI agent assets — instruction bundles, sub-agents, prompt templates — are proliferating fast. Every team customizes them, every platform ships its own set, and there's no versioning, no diffing, no collaboration model. You drop a folder somewhere and hope for the best.
+AI agent assets (instruction bundles, sub-agents, prompt templates) are proliferating fast. Every team customizes them, every platform ships its own set, and there's no versioning, no diffing, no collaboration model. You drop a folder somewhere and hope for the best.
 
 Git already solved this for code. Assets are directories of text files. The infrastructure is already there.
 
@@ -54,13 +54,13 @@ The same binary serves three roles based on its invocation name:
 |-------------|--------------|-------|
 | `git-skill` | `skill`      | Skill-focused commands |
 | `git-agent` | `agent`      | Agent-focused commands |
-| `git-asset` | (none)       | Kind-agnostic; `--kind` flag required for ambiguous calls |
+| `git-asset` | (none)       | Kind-agnostic. `--kind` flag required for ambiguous calls. |
 
 Symlink or copy the same `git-skill` binary to `git-agent` / `git-asset` to enable all three.
 
-Requires Go 1.22+ and git 2.x. Tested on Linux, macOS, and Windows. Windows symlinks need developer mode or admin; otherwise the tool falls back to junction or copy.
+Requires Go 1.22+ and git 2.x. Tested on Linux, macOS, and Windows. Windows symlinks need developer mode or admin. Otherwise the tool falls back to junction or copy.
 
-## Quickstart — producer
+## Quickstart: producer
 
 Track and publish a skill from your repo.
 
@@ -84,7 +84,7 @@ git skill push origin
 
 Authoring an **agent** is the same flow with `git-agent` and an `AGENT.md` marker.
 
-## Quickstart — consumer
+## Quickstart: consumer
 
 Install someone else's asset into your repo.
 
@@ -100,7 +100,7 @@ git skill add acme/code-review@^1.0.0 \
 git skill install
 ```
 
-`assets.json` now records the resolved commit. Commit it alongside your code — anyone who clones your repo can run `git skill install` and get the exact same trees back.
+`assets.json` now records the resolved commit. Commit it alongside your code, and anyone who clones your repo can run `git skill install` and get the exact same trees back.
 
 To upgrade later:
 
@@ -123,12 +123,12 @@ A single file at the repo root. Carries both **intent** (what you asked for) and
         "remote": "https://github.com/acme/skills",
         "spec": "^1.0.0",
         "version": "1.2.0",
-        "commit": "9f3c1a…",
+        "commit": "9f3c1a...",
         "canonical": "skills/code-review",
         "runtimes": { "claude": {} }
       }
     },
-    "agent": { … }
+    "agent": { ... }
   }
 }
 ```
@@ -139,7 +139,7 @@ A single file at the repo root. Carries both **intent** (what you asked for) and
 
 ## Runtimes
 
-`runtimes` is a map keyed by runtime name; each entry may carry per-asset overrides (`from`, `to`). Empty `{}` means "use the registry defaults". Built-in targets:
+`runtimes` is a map keyed by runtime name. Each entry may carry per-asset overrides (`from`, `to`). Empty `{}` means "use the registry defaults". Built-in targets:
 
 | Runtime  | Skill target                | Agent source → target                          |
 |----------|-----------------------------|------------------------------------------------|
@@ -148,19 +148,19 @@ A single file at the repo root. Carries both **intent** (what you asked for) and
 | cursor   | `.cursor/rules/<name>/`     | _(not supported)_                              |
 | opencode | `.agents/skills/<name>/`    | _(not supported)_                              |
 
-A trailing `/` on the target means directory materialization (the whole canonical tree fans out); no trailing slash means a single-file mapping. Authors of agents that target codex ship an `agent.toml` alongside the `AGENT.md` (no in-tool format conversion).
+A trailing `/` on the target means directory materialization (the whole canonical tree fans out). No trailing slash means a single-file mapping. Authors of agents that target codex ship an `agent.toml` alongside the `AGENT.md` (no in-tool format conversion).
 
 Override the target on the fly with `--target <runtime>=<path>` (repeatable). The override is persisted into `assets.json`:
 
 ```bash
-git skill add code-review --from … --runtime claude --target claude=.custom/skills/<name>/
+git skill add code-review --from ... --runtime claude --target claude=.custom/skills/<name>/
 ```
 
-Skills materialize as full trees; agent fan-outs depend on the runtime (Claude: `AGENT.md`; Codex: `agent.toml`). On Unix the tool prefers relative symlinks back to the canonical tree. On Windows it falls back to junctions or full copies.
+Skills materialize as full trees. Agent fan-outs depend on the runtime (Claude: `AGENT.md`, Codex: `agent.toml`). On Unix the tool prefers relative symlinks back to the canonical tree. On Windows it falls back to junctions or full copies.
 
 ### Asset manifest (`git-skill.yaml`)
 
-Optional. Lives at the root of the canonical tree and lets the asset author declare per-runtime `from`/`to` overrides — or extend `git-skill` to runtimes that aren't in the built-in registry — without consumers needing to set `--target`.
+Optional. Lives at the root of the canonical tree and lets the asset author declare per-runtime `from`/`to` overrides (or extend `git-skill` to runtimes that aren't in the built-in registry) without consumers needing to set `--target`.
 
 ```yaml
 # git-skill.yaml at the root of the asset tree
@@ -180,8 +180,8 @@ runtimes:
 
 Two optional config files extend or override the built-in registry without touching individual assets:
 
-- **`~/.config/git-skill/runtimes.yaml`** — user-global. Override with `$GIT_SKILL_USER_CONFIG` (intended for tests).
-- **`<repo>/.git-skill/runtimes.yaml`** — project-local, committable.
+- **`~/.config/git-skill/runtimes.yaml`**: user-global. Override with `$GIT_SKILL_USER_CONFIG` (intended for tests).
+- **`<repo>/.git-skill/runtimes.yaml`**: project-local, committable.
 
 ```yaml
 # .git-skill/runtimes.yaml
@@ -201,7 +201,7 @@ runtimes:
 
 Full precedence chain (low → high): built-in registry < user config < project config < asset manifest < lock entry override.
 
-Canonical trees live at `skills/<name>/` and `agents/<name>/` by default (configurable via `config.skillsRoot` / `config.agentsRoot` in `assets.json`). PRs to add new runtimes are welcome; see [`internal/runtimes/registry.go`](./internal/runtimes/registry.go).
+Canonical trees live at `skills/<name>/` and `agents/<name>/` by default (configurable via `config.skillsRoot` / `config.agentsRoot` in `assets.json`). PRs to add new runtimes are welcome. See [`internal/runtimes/registry.go`](./internal/runtimes/registry.go).
 
 ## Commands
 
@@ -237,20 +237,20 @@ Every commit written by `commit` includes a trailer identifying the kind:
 Asset-Kind: skill
 ```
 
-This makes the commit self-describing — any indexer or downstream tool can recover the kind from the commit alone without consulting refs.
+This makes the commit self-describing: any indexer or downstream tool can recover the kind from the commit alone without consulting refs.
 
 ## Design Principles
 
-1. **Don't build what git already provides.** Versioning, sync, merge, identity, history — it's all there.
+1. **Don't build what git already provides.** Versioning, sync, merge, identity, history: it's all there.
 2. **Plumbing, not porcelain.** The tool composes `hash-object`, `mktree`, `commit-tree`, `update-ref`. Reading the source teaches you how git works.
 3. **The spec is the contribution.** The CLI is a reference implementation. The format is what matters.
 
 ## Documentation
 
-- [SKILL-FORMAT.md](./SKILL-FORMAT.md) — storage format specification
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — CLI vs platform separation
-- [CONTRIBUTING.md](./CONTRIBUTING.md) — how to contribute
-- [CHANGELOG.md](./CHANGELOG.md) — release notes
+- [SKILL-FORMAT.md](./SKILL-FORMAT.md): storage format specification
+- [ARCHITECTURE.md](./ARCHITECTURE.md): CLI vs platform separation
+- [CONTRIBUTING.md](./CONTRIBUTING.md): how to contribute
+- [CHANGELOG.md](./CHANGELOG.md): release notes
 
 ## License
 

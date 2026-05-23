@@ -33,7 +33,7 @@ const Filename = "git-skill.yaml"
 // file was absent and the registry default applies.
 type Manifest struct {
 	// Kind is an optional author hint ("skill" / "agent"). Parsed but not
-	// consumed by Phase B — the install path infers kind elsewhere.
+	// consumed by Phase B - the install path infers kind elsewhere.
 	Kind string `yaml:"kind"`
 	// Runtimes maps runtime name → mapping override. An entry may set
 	// just From, just To, or both. Missing fields fall back to the
@@ -48,7 +48,7 @@ type Entry struct {
 }
 
 // Load reads <canonAbs>/git-skill.yaml. Returns (nil, nil) when the file
-// is absent — callers treat that as "no manifest, use registry default".
+// is absent - callers treat that as "no manifest, use registry default".
 func Load(canonAbs string) (*Manifest, error) {
 	path := filepath.Join(canonAbs, Filename)
 	data, err := os.ReadFile(path)

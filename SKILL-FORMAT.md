@@ -1,6 +1,6 @@
 # SKILL-FORMAT.md
 
-> A specification for storing AI agent **assets** — skills and agents — as git-native objects.
+> A specification for storing AI agent **assets** - skills and agents - as git-native objects.
 > Version: 0.2.0-draft
 
 ## Overview
@@ -32,10 +32,10 @@ Two kinds are defined:
 
 The kind of a given asset is resolved through a 4-tier discriminator (highest tier wins):
 
-1. **lock entry override** — `kind:` in `assets.json` for an installed asset.
-2. **commit trailer** — `Asset-Kind: <kind>` on the most recent commit of the ref.
-3. **frontmatter** — `kind:` field in the marker file's YAML frontmatter.
-4. **filename** — `SKILL.md` ⇒ `skill`; `AGENT.md` ⇒ `agent`.
+1. **lock entry override** - `kind:` in `assets.json` for an installed asset.
+2. **commit trailer** - `Asset-Kind: <kind>` on the most recent commit of the ref.
+3. **frontmatter** - `kind:` field in the marker file's YAML frontmatter.
+4. **filename** - `SKILL.md` ⇒ `skill`; `AGENT.md` ⇒ `agent`.
 
 Conflicts produce a warning but do not fail the operation; the higher tier wins.
 
@@ -61,7 +61,7 @@ The marker file (`SKILL.md` or `AGENT.md`) MUST begin with YAML frontmatter deli
 ```yaml
 ---
 name: frontend-design
-description: Create production-grade frontend interfaces…
+description: Create production-grade frontend interfaces...
 version: 1.2.0
 kind: skill        # optional; resolved through the 4-tier discriminator
 license: MIT
@@ -70,14 +70,14 @@ license: MIT
 
 ### Required fields
 
-- `name` — Unique asset identifier. Lowercase, hyphens allowed; may include a namespace (`acme/code-review`). Must match the ref name.
-- `description` — Human-readable description.
+- `name` - Unique asset identifier. Lowercase, hyphens allowed; may include a namespace (`acme/code-review`). Must match the ref name.
+- `description` - Human-readable description.
 
 ### Optional fields
 
-- `version` — SemVer string. Also recorded in the commit trailer on each snapshot.
-- `kind` — `skill` or `agent`. Used to break ties in the 4-tier discriminator.
-- `license` — SPDX identifier or reference to LICENSE.txt.
+- `version` - SemVer string. Also recorded in the commit trailer on each snapshot.
+- `kind` - `skill` or `agent`. Used to break ties in the 4-tier discriminator.
+- `license` - SPDX identifier or reference to LICENSE.txt.
 
 ## Ref naming
 
@@ -137,7 +137,7 @@ Consumers record onboarded assets in a single committed file at the repo root:
         "remote": "https://github.com/acme/skills",
         "spec": "^1.0.0",
         "version": "1.2.0",
-        "commit": "9f3c1a…",
+        "commit": "9f3c1a...",
         "canonical": "skills/acme/code-review",
         "runtimes": { "claude": {} }
       }
@@ -173,8 +173,8 @@ runtimes:
 
 Two optional config files extend or override the built-in runtime registry without touching individual assets:
 
-- `~/.config/git-skill/runtimes.yaml` — user-global.
-- `<repo>/.git-skill/runtimes.yaml` — project-local, committable.
+- `~/.config/git-skill/runtimes.yaml` - user-global.
+- `<repo>/.git-skill/runtimes.yaml` - project-local, committable.
 
 Schema:
 

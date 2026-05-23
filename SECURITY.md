@@ -28,23 +28,23 @@ Out-of-scope:
 
 - Bugs in the underlying `git` binary or git's transport protocols.
 - Anything that requires write access to the user's local `.git` directory (treated as already-trusted state).
-- Issues in third-party skill content fetched from a remote — content is the publisher's responsibility.
+- Issues in third-party skill content fetched from a remote - content is the publisher's responsibility.
 
 ## Threat model: consuming third-party skills
 
 Skill files are agent-instruction code. They get loaded into an AI agent's prompt and can steer the agent's behavior. Some risks are inherent to that:
 
-- **Prompt-level attacks.** A hostile `SKILL.md` can instruct the agent to exfiltrate secrets, write backdoors, mislead the user, or invoke tools in dangerous ways. There is no sandbox at the prompt layer — the agent reads the skill the same way it reads your own instructions. Treat installing an untrusted skill like running an untrusted shell script.
+- **Prompt-level attacks.** A hostile `SKILL.md` can instruct the agent to exfiltrate secrets, write backdoors, mislead the user, or invoke tools in dangerous ways. There is no sandbox at the prompt layer - the agent reads the skill the same way it reads your own instructions. Treat installing an untrusted skill like running an untrusted shell script.
 - **Bundled scripts.** Skills can ship a `scripts/` directory with executables. git-skill does not run them, but a skill's instructions may tell the agent to. Audit `scripts/` (and the SKILL.md text that references them) before installing.
 - **Lockfile tampering.** A malicious PR can change a `commit:` in `skill.lock` to point at hostile content under the same `version:` string. Always diff `skill.lock` in code review; never `git skill sync` from an untrusted branch.
-- **Moved upstream tags.** A tag like `v1.0.0` is a plain git ref and can be force-moved by a publisher with write access. The lockfile's `commit:` SHA is what actually pins bytes — the `version:` string is informational.
+- **Moved upstream tags.** A tag like `v1.0.0` is a plain git ref and can be force-moved by a publisher with write access. The lockfile's `commit:` SHA is what actually pins bytes - the `version:` string is informational.
 
 Mitigations git-skill provides:
 
-- **SHA pinning** in `skill.lock` — `git skill sync` resolves the commit SHA, not the tag, so a moved upstream tag does not silently change installed bytes.
-- **Atomic install** — files deleted upstream are removed locally; you cannot end up with stale dangerous files lingering after an upgrade.
-- **Fetch without install** — `git skill fetch <remote>` populates the local object store without writing anywhere in the work tree. `git cat-file -p refs/skills/<name>:SKILL.md` lets you read the body before installing.
-- **Path validation** — `skill.lock` paths that escape the repo root are rejected by `git skill sync`.
+- **SHA pinning** in `skill.lock` - `git skill sync` resolves the commit SHA, not the tag, so a moved upstream tag does not silently change installed bytes.
+- **Atomic install** - files deleted upstream are removed locally; you cannot end up with stale dangerous files lingering after an upgrade.
+- **Fetch without install** - `git skill fetch <remote>` populates the local object store without writing anywhere in the work tree. `git cat-file -p refs/skills/<name>:SKILL.md` lets you read the body before installing.
+- **Path validation** - `skill.lock` paths that escape the repo root are rejected by `git skill sync`.
 
 Mitigations git-skill **does not** provide:
 

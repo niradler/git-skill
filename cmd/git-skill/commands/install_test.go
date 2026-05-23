@@ -480,8 +480,8 @@ func TestInstall_LockOverrideFromSubstitution(t *testing.T) {
 // A manifest-only runtime (not in the registry) without a `to` cannot
 // materialize, and install must surface that error. manifest.Load
 // already rejects entries with neither from nor to, so this covers the
-// case where `from` is set but `to` is empty — which install.go's
-// resolveMapping rejects at line "mapping.To == ”".
+// case where `from` is set but `to` is empty - which install.go's
+// resolveMapping rejects at line "mapping.To == "".
 func TestInstall_ManifestOnlyRuntimeMissingToFails(t *testing.T) {
 	upstream, commit := makeUpstreamSkillFiles(t, "acme/x", map[string]string{
 		"SKILL.md":        "---\nname: acme/x\n---\n# acme/x",
@@ -677,8 +677,8 @@ func TestRemove_CleansUpManifestOnlyRuntime(t *testing.T) {
 
 // Remove must also clean up runtimes that exist only because a
 // project-level .git-skill/runtimes.yaml declared them. The cleanup
-// path runs reg.Resolve(rt, k, name) — which already sees the project
-// config — so the test pins the behavior: an entry whose runtime is
+// path runs reg.Resolve(rt, k, name) - which already sees the project
+// config - so the test pins the behavior: an entry whose runtime is
 // not in the built-in registry but IS in the project config gets its
 // fan-out path removed.
 func TestRemove_CleansUpProjectConfigRuntime(t *testing.T) {

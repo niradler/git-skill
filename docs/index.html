@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>git-skill — git-native asset versioning for skills and agents</title>
+<title>git-skill - git-native asset versioning for skills and agents</title>
 <meta name="description" content="git-skill stores AI agent skills and agents as git tree objects under refs/assets/&lt;kind&gt;/&lt;name&gt;, versions them with git tags, and pins exact commits in assets.json for reproducible installs across teams." />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -100,13 +100,13 @@
   <div class="max-w-[880px] mx-auto text-center">
     <div class="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-pill border border-subtle-ash text-[12px] text-midtone-gray">
       <span class="w-1.5 h-1.5 rounded-full bg-success-green"></span>
-      asset format — skills and agents, one binary
+      asset format - skills and agents, one binary
     </div>
     <h1 class="text-[48px] leading-[1] tracking-[-2.4px] font-semibold text-deep-black">
       Skills and agents as git objects.
     </h1>
     <p class="mt-6 text-[18px] leading-[1.33] tracking-[-0.45px] text-rich-black max-w-[640px] mx-auto">
-      git-skill stores AI agent assets — skills and agents — under <code class="mono">refs/assets/&lt;kind&gt;/&lt;name&gt;</code>, versioned with tags, distributed with any git remote, pinned by exact commit SHA in <code class="mono">assets.json</code> for reproducible installs across your team.
+      git-skill stores AI agent assets - skills and agents - under <code class="mono">refs/assets/&lt;kind&gt;/&lt;name&gt;</code>, versioned with tags, distributed with any git remote, pinned by exact commit SHA in <code class="mono">assets.json</code> for reproducible installs across your team.
     </p>
     <div class="mt-10 flex flex-wrap items-center justify-center gap-2">
       <a href="#quick-start" class="px-12 py-2 bg-deep-black text-canvas-white rounded-[10px] hover:opacity-90 font-medium">Quick start</a>
@@ -130,13 +130,13 @@ git skill list</code></pre>
     <div class="max-w-[680px]">
       <div class="text-[12px] text-midtone-gray uppercase tracking-wider">Why git-skill</div>
       <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">Skills and agents deserve the same rigor as code.</h2>
-      <p class="mt-4 text-rich-black">An AI agent asset — a skill, a sub-agent, a prompt bundle — is a prompt plus supporting files that change how an agent behaves. Today they're scattered across folders, gists, and copy-pasted snippets. There's no version, no lockfile, no way to say "every machine in our team runs <em>this exact</em> review skill at <em>this exact</em> SHA". git-skill fixes that, using only the git you already have.</p>
+      <p class="mt-4 text-rich-black">An AI agent asset - a skill, a sub-agent, a prompt bundle - is a prompt plus supporting files that change how an agent behaves. Today they're scattered across folders, gists, and copy-pasted snippets. There's no version, no lockfile, no way to say "every machine in our team runs <em>this exact</em> review skill at <em>this exact</em> SHA". git-skill fixes that, using only the git you already have.</p>
     </div>
 
     <div class="mt-10 grid md:grid-cols-3 gap-4">
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="text-deep-black font-medium">git-native</div>
-        <p class="mt-2 text-rich-black">Every asset is a real git commit pointing at a real git tree under <code class="mono">refs/assets/&lt;kind&gt;/&lt;name&gt;</code>. <code class="mono">git log</code>, <code class="mono">git diff</code>, <code class="mono">git cat-file</code> — they all just work. No new database, no central registry, no SaaS.</p>
+        <p class="mt-2 text-rich-black">Every asset is a real git commit pointing at a real git tree under <code class="mono">refs/assets/&lt;kind&gt;/&lt;name&gt;</code>. <code class="mono">git log</code>, <code class="mono">git diff</code>, <code class="mono">git cat-file</code> - they all just work. No new database, no central registry, no SaaS.</p>
       </div>
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="text-deep-black font-medium">Reproducible</div>
@@ -144,7 +144,7 @@ git skill list</code></pre>
       </div>
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="text-deep-black font-medium">Portable</div>
-        <p class="mt-2 text-rich-black">Any git remote that supports pushing refs works — GitHub, GitLab, Bitbucket, Gitea, a bare repo on a USB stick. Public, private, monorepo, polyrepo, doesn't matter.</p>
+        <p class="mt-2 text-rich-black">Any git remote that supports pushing refs works - GitHub, GitLab, Bitbucket, Gitea, a bare repo on a USB stick. Public, private, monorepo, polyrepo, doesn't matter.</p>
       </div>
     </div>
 
@@ -171,7 +171,7 @@ git skill list</code></pre>
     <div class="max-w-[680px]">
       <div class="text-[12px] text-midtone-gray uppercase tracking-wider">How it works</div>
       <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">Assets are git refs, not folders.</h2>
-      <p class="mt-4 text-rich-black">Every asset lives at <code class="mono">refs/assets/&lt;kind&gt;/&lt;name&gt;</code>, and each tagged release at <code class="mono">refs/asset-tags/&lt;kind&gt;/&lt;name&gt;/vX.Y.Z</code>. Assets travel with the repo's regular <code class="mono">git push</code> / <code class="mono">git fetch</code> machinery — git-skill never invents a transport.</p>
+      <p class="mt-4 text-rich-black">Every asset lives at <code class="mono">refs/assets/&lt;kind&gt;/&lt;name&gt;</code>, and each tagged release at <code class="mono">refs/asset-tags/&lt;kind&gt;/&lt;name&gt;/vX.Y.Z</code>. Assets travel with the repo's regular <code class="mono">git push</code> / <code class="mono">git fetch</code> machinery - git-skill never invents a transport.</p>
     </div>
 
     <div class="mt-10 grid lg:grid-cols-2 gap-4">
@@ -223,7 +223,7 @@ flowchart LR
     L1["remote: URL"]
     L2["spec: ^1.0.0  (intent)"]
     L3["version: 1.0.0  (resolved tag)"]
-    L4["commit: abc123…  (resolved SHA — immutable)"]
+    L4["commit: abc123...  (resolved SHA - immutable)"]
     L5["canonical: skills/acme/code-review"]
     L6["runtimes.claude: {}"]
   end
@@ -307,7 +307,7 @@ git add assets.json &amp;&amp; git commit -m "bump code-review to v1.1.0"</code>
 
       <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
         <div class="text-deep-black font-medium">Reproduce a teammate's setup</div>
-        <p class="mt-2 text-rich-black">They committed <code class="mono">assets.json</code>; you just <code class="mono">install</code>. No tags involved — the SHA is what binds.</p>
+        <p class="mt-2 text-rich-black">They committed <code class="mono">assets.json</code>; you just <code class="mono">install</code>. No tags involved - the SHA is what binds.</p>
 <pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git clone &lt;their-app-repo&gt;
 cd &lt;their-app-repo&gt;
 git skill install
@@ -327,7 +327,7 @@ git agent push origin</code></pre>
 
       <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
         <div class="text-deep-black font-medium">Inspect what changed between releases</div>
-        <p class="mt-2 text-rich-black">Plain git diff — no special tooling needed.</p>
+        <p class="mt-2 text-rich-black">Plain git diff - no special tooling needed.</p>
 <pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill diff code-review v1.0.0 v1.1.0
 # or with raw git:
 git diff refs/asset-tags/skill/code-review/v1.0.0 \
@@ -347,7 +347,7 @@ git skill install</code></pre>
 
       <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
         <div class="text-deep-black font-medium">Use without the CLI</div>
-        <p class="mt-2 text-rich-black">Assets are plain git refs — any git-aware tool reads them natively.</p>
+        <p class="mt-2 text-rich-black">Assets are plain git refs - any git-aware tool reads them natively.</p>
 <pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git cat-file -p refs/assets/skill/code-review
 # tree abc...
 # author Your Name &lt;you@example.com&gt;
@@ -402,7 +402,7 @@ git ls-tree refs/assets/skill/code-review
           <span class="px-2 py-0.5 rounded-3xl bg-deep-black text-canvas-white text-[11px] font-medium">DO</span>
           <span class="text-deep-black font-medium">Use a URL for <code class="mono">remote</code></span>
         </div>
-        <p class="mt-2 text-rich-black">The <code class="mono">remote</code> field in <code class="mono">assets.json</code> must resolve from every teammate's machine. <code class="mono">https://github.com/…</code> or <code class="mono">git@github.com:…</code> — never a local filesystem path.</p>
+        <p class="mt-2 text-rich-black">The <code class="mono">remote</code> field in <code class="mono">assets.json</code> must resolve from every teammate's machine. <code class="mono">https://github.com/...</code> or <code class="mono">git@github.com:...</code> - never a local filesystem path.</p>
       </div>
 
       <div class="rounded-[14px] border border-subtle-ash p-4">
@@ -434,7 +434,7 @@ git ls-tree refs/assets/skill/code-review
           <span class="px-2 py-0.5 rounded-3xl bg-callout-red text-canvas-white text-[11px] font-medium">DON'T</span>
           <span class="text-deep-black font-medium">Mix asset commits with app commits</span>
         </div>
-        <p class="mt-2 text-rich-black"><code class="mono">refs/assets/*</code> are isolated from your app's <code class="mono">main</code>. Don't try to consolidate by cherry-picking between them — the disjoint history is a feature, not an accident.</p>
+        <p class="mt-2 text-rich-black"><code class="mono">refs/assets/*</code> are isolated from your app's <code class="mono">main</code>. Don't try to consolidate by cherry-picking between them - the disjoint history is a feature, not an accident.</p>
       </div>
 
     </div>
@@ -456,7 +456,7 @@ git ls-tree refs/assets/skill/code-review
       </a>
       <a href="https://github.com/niradler/git-skill/blob/main/SKILL-FORMAT.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
         <div class="text-deep-black font-medium">→ Asset format spec</div>
-        <p class="mt-2 text-rich-black">The storage format on its own, decoupled from the CLI. Refs, kinds, the <code class="mono">Asset-Kind</code> trailer, and <code class="mono">assets.json</code> — re-implement in any language.</p>
+        <p class="mt-2 text-rich-black">The storage format on its own, decoupled from the CLI. Refs, kinds, the <code class="mono">Asset-Kind</code> trailer, and <code class="mono">assets.json</code> - re-implement in any language.</p>
       </a>
       <a href="https://github.com/niradler/git-skill/blob/main/ARCHITECTURE.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
         <div class="text-deep-black font-medium">→ Architecture</div>
@@ -484,7 +484,7 @@ git ls-tree refs/assets/skill/code-review
     <div class="flex items-center gap-2 text-rich-black">
       <span class="inline-block w-5 h-5 rounded-[4px] bg-deep-black"></span>
       <span class="font-medium">git-skill</span>
-      <span class="text-midtone-gray">— git-native asset versioning</span>
+      <span class="text-midtone-gray">- git-native asset versioning</span>
     </div>
     <div class="flex items-center gap-3 text-[13px] text-midtone-gray">
       <a href="https://github.com/niradler/git-skill" class="hover:text-rich-black">GitHub</a>

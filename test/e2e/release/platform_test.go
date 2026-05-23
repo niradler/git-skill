@@ -8,7 +8,7 @@ import (
 )
 
 // C1 (Windows): add with --dev, then os.Lstat the runtime path; ensure it exists.
-// Symlink OR junction OR copy — all acceptable; we just need the tree mirrored.
+// Symlink OR junction OR copy - all acceptable; we just need the tree mirrored.
 func TestC1_WindowsDevLink(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("windows only")
@@ -29,14 +29,14 @@ func TestC1_WindowsDevLink(t *testing.T) {
 		t.Fatalf("add --dev: %v\n%s", err, stderr)
 	}
 
-	// os.Lstat must succeed — symlink, junction, or copy all return without error
+	// os.Lstat must succeed - symlink, junction, or copy all return without error
 	rtPath := filepath.Join(consumer.dir, ".claude", "skills", "acme", "x")
 	if _, err := os.Lstat(rtPath); err != nil {
 		t.Errorf("runtime path missing after --dev add on Windows: %v", err)
 	}
 }
 
-// C2 (Unix): add with --dev, os.Lstat then os.Readlink — assert target is relative
+// C2 (Unix): add with --dev, os.Lstat then os.Readlink - assert target is relative
 // (does NOT start with /).
 func TestC2_UnixDevSymlink(t *testing.T) {
 	if runtime.GOOS == "windows" {

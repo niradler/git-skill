@@ -5,7 +5,7 @@ labels: enhancement
 ---
 
 **The problem**
-What workflow is awkward or impossible today? Be concrete — a use case beats an abstract wish.
+What workflow is awkward or impossible today? Be concrete - a use case beats an abstract wish.
 
 **Proposed solution**
 How would it work? CLI surface, file format changes, anything visible to users.
