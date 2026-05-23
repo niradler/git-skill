@@ -52,3 +52,44 @@ func TestAddNewSkill(t *testing.T) {
 		t.Errorf("canonical materialization missing: %v", err)
 	}
 }
+
+func TestSplitFlagsAndPositional_BoolFlagDoesNotConsumePositional(t *testing.T) {
+	boolFlags := map[string]bool{"dev": true}
+	args := []string{"--dev", "acme/x", "--from", "https://example/r", "--runtime", "claude"}
+	flags, positional := splitFlagsAndPositional(args, boolFlags)
+
+	wantFlags := []string{"--dev", "--from", "https://example/r", "--runtime", "claude"}
+	wantPositional := []string{"acme/x"}
+
+	if !equalStrings(flags, wantFlags) {
+		t.Errorf("flags = %v, want %v", flags, wantFlags)
+	}
+	if !equalStrings(positional, wantPositional) {
+		t.Errorf("positional = %v, want %v", positional, wantPositional)
+	}
+}
+
+func TestSplitFlagsAndPositional_ValueFlagStillConsumesValue(t *testing.T) {
+	boolFlags := map[string]bool{"dev": true}
+	args := []string{"acme/x", "--from", "https://example/r"}
+	flags, positional := splitFlagsAndPositional(args, boolFlags)
+
+	if !equalStrings(flags, []string{"--from", "https://example/r"}) {
+		t.Errorf("flags = %v", flags)
+	}
+	if !equalStrings(positional, []string{"acme/x"}) {
+		t.Errorf("positional = %v", positional)
+	}
+}
+
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}

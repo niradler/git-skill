@@ -141,14 +141,16 @@ A single file at the repo root. Carries both **intent** (what you asked for) and
 
 `runtimes` determines where each asset is materialized. Built-in targets cover the common agent platforms:
 
-| Runtime  | Skill target                         | Agent target                              |
-|----------|--------------------------------------|-------------------------------------------|
-| claude   | `.claude/skills/<name>/`             | `.claude/agents/<name>.md`                |
-| cursor   | `.cursor/skills/<name>/`             | `.cursor/agents/<name>.md`                |
-| codex    | `.codex/skills/<name>/`              | `.codex/agents/<name>.md`                 |
-| opencode | `.opencode/skills/<name>/`           | `.opencode/agents/<name>.md`              |
+| Runtime  | Skill target                | Agent target                |
+|----------|-----------------------------|-----------------------------|
+| claude   | `.claude/skills/<name>/`    | `.claude/agents/<name>.md`  |
+| cursor   | `.cursor/rules/<name>/`     | _(not supported)_           |
+| codex    | `.agents/skills/<name>/`    | _(not supported)_           |
+| opencode | `.agents/skills/<name>/`    | _(not supported)_           |
 
-Skills materialize as full trees; agents as the single `AGENT.md` marker. On Unix the tool prefers relative symlinks back to the canonical tree under `.assets/`. On Windows it falls back to junctions or full copies.
+Skills materialize as full trees; agents as the single `AGENT.md` marker. On Unix the tool prefers relative symlinks back to the canonical tree. On Windows it falls back to junctions or full copies.
+
+Canonical trees live at `skills/<name>/` and `agents/<name>/` by default (configurable via `config.skillsRoot` / `config.agentsRoot` in `assets.json`). PRs to add new runtimes — including agent support for cursor / codex / opencode — are welcome; see [`internal/runtimes/registry.go`](./internal/runtimes/registry.go).
 
 ## Commands
 

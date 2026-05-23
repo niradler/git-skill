@@ -23,7 +23,7 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 
 	// Reorder args so flags come before positional arguments, because flag.Parse
 	// stops at the first non-flag argument. Users may write: add <name> --from <url>.
-	flags, positional := splitFlagsAndPositional(args)
+	flags, positional := splitFlagsAndPositional(args, boolFlagNames(fs))
 	flagArgs := append(flags, positional...)
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
@@ -87,25 +87,29 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 
 // splitFlagsAndPositional separates flag args (starting with "-") from
 // positional args so that flags and positionals can appear in any order.
-// It handles both "-flag value" and "-flag=value" forms.
-func splitFlagsAndPositional(args []string) (flags, positional []string) {
+// It handles both "-flag value" and "-flag=value" forms. Bool flags listed
+// in boolFlags do not consume the following arg as their value.
+func splitFlagsAndPositional(args []string, boolFlags map[string]bool) (flags, positional []string) {
 	i := 0
 	for i < len(args) {
 		a := args[i]
 		if strings.HasPrefix(a, "-") {
-			// Check if it's a flag=value form or a boolean flag.
+			// Check if it's a flag=value form.
 			if strings.Contains(a, "=") {
 				flags = append(flags, a)
 				i++
-			} else {
-				// Consume this flag and its potential value argument.
-				flags = append(flags, a)
+				continue
+			}
+			flags = append(flags, a)
+			i++
+			// Bool flags never take a value argument.
+			if boolFlags[flagName(a)] {
+				continue
+			}
+			// If next arg doesn't start with "-", it's the flag's value.
+			if i < len(args) && !strings.HasPrefix(args[i], "-") {
+				flags = append(flags, args[i])
 				i++
-				// If next arg doesn't start with "-", it's the flag's value.
-				if i < len(args) && !strings.HasPrefix(args[i], "-") {
-					flags = append(flags, args[i])
-					i++
-				}
 			}
 		} else {
 			positional = append(positional, a)
@@ -113,6 +117,23 @@ func splitFlagsAndPositional(args []string) (flags, positional []string) {
 		}
 	}
 	return flags, positional
+}
+
+// flagName strips leading dashes from a flag token: "--dev" → "dev".
+func flagName(s string) string {
+	return strings.TrimLeft(s, "-")
+}
+
+// boolFlagNames extracts the names of bool flags from a FlagSet so
+// splitFlagsAndPositional can leave them alone when reordering.
+func boolFlagNames(fs *flag.FlagSet) map[string]bool {
+	out := map[string]bool{}
+	fs.VisitAll(func(f *flag.Flag) {
+		if bf, ok := f.Value.(interface{ IsBoolFlag() bool }); ok && bf.IsBoolFlag() {
+			out[f.Name] = true
+		}
+	})
+	return out
 }
 
 func splitNameSpec(s string) (name, spec string) {
