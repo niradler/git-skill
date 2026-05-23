@@ -1,64 +1,133 @@
+// Package refs builds and parses git ref paths for assets.
+//
+// Layout (spec L7):
+//
+//	refs/assets/<kind>/<name>                  // asset branch
+//	refs/asset-tags/<kind>/<name>/v<semver>    // immutable tagged release
+//
+// Kind is "skill" or "agent" (singular). See internal/kind.
 package refs
 
 import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/niradler/git-skill/internal/kind"
 )
 
 const (
-	// Prefix is the ref namespace for all skills.
-	Prefix = "refs/skills/"
-
-	// TagPrefix is for versioned skill releases.
-	TagPrefix = "refs/skill-tags/"
+	Prefix    = "refs/assets/"
+	TagPrefix = "refs/asset-tags/"
 )
 
-// nameSegment matches a single segment of a skill name:
-// lowercase letters, digits, hyphens, underscores; must start with a letter or digit.
+func KindPrefix(k kind.Kind) string    { return Prefix + k.String() + "/" }
+func KindTagPrefix(k kind.Kind) string { return TagPrefix + k.String() + "/" }
+
+func Ref(k kind.Kind, name string) string {
+	return KindPrefix(k) + name
+}
+
+func TagRef(k kind.Kind, name, version string) string {
+	v := version
+	if !strings.HasPrefix(v, "v") {
+		v = "v" + v
+	}
+	return KindTagPrefix(k) + name + "/" + v
+}
+
+func PushRefspec() string     { return Prefix + "*:" + Prefix + "*" }
+func FetchRefspec() string    { return "+" + Prefix + "*:" + Prefix + "*" }
+func PushTagRefspec() string  { return TagPrefix + "*:" + TagPrefix + "*" }
+func FetchTagRefspec() string { return "+" + TagPrefix + "*:" + TagPrefix + "*" }
+
+func KindPushRefspec(k kind.Kind) string {
+	return KindPrefix(k) + "*:" + KindPrefix(k) + "*"
+}
+func KindFetchRefspec(k kind.Kind) string {
+	return "+" + KindPrefix(k) + "*:" + KindPrefix(k) + "*"
+}
+func KindPushTagRefspec(k kind.Kind) string {
+	return KindTagPrefix(k) + "*:" + KindTagPrefix(k) + "*"
+}
+func KindFetchTagRefspec(k kind.Kind) string {
+	return "+" + KindTagPrefix(k) + "*:" + KindTagPrefix(k) + "*"
+}
+
+// ParseRef extracts kind + name from a ref under refs/assets/.
+// Returns an error if the ref is not under the asset prefix or the kind segment
+// is not recognized.
+func ParseRef(ref string) (kind.Kind, string, error) {
+	rest, ok := strings.CutPrefix(ref, Prefix)
+	if !ok {
+		return 0, "", fmt.Errorf("ref %q is not under %s", ref, Prefix)
+	}
+	seg, name, ok := strings.Cut(rest, "/")
+	if !ok || name == "" {
+		return 0, "", fmt.Errorf("ref %q missing kind or name", ref)
+	}
+	k, err := kind.Parse(seg)
+	if err != nil {
+		return 0, "", fmt.Errorf("ref %q: %w", ref, err)
+	}
+	return k, name, nil
+}
+
+// ParseTagRef extracts kind + name + version from a tag ref.
+func ParseTagRef(ref string) (kind.Kind, string, string, error) {
+	rest, ok := strings.CutPrefix(ref, TagPrefix)
+	if !ok {
+		return 0, "", "", fmt.Errorf("ref %q is not under %s", ref, TagPrefix)
+	}
+	seg, rest, ok := strings.Cut(rest, "/")
+	if !ok {
+		return 0, "", "", fmt.Errorf("tag ref %q missing kind", ref)
+	}
+	k, err := kind.Parse(seg)
+	if err != nil {
+		return 0, "", "", fmt.Errorf("tag ref %q: %w", ref, err)
+	}
+	// Last "/v..." is the version.
+	idx := strings.LastIndex(rest, "/v")
+	if idx < 0 {
+		return 0, "", "", fmt.Errorf("tag ref %q missing version", ref)
+	}
+	name := rest[:idx]
+	ver := rest[idx+1:]
+	if name == "" || ver == "" {
+		return 0, "", "", fmt.Errorf("tag ref %q has empty name or version", ref)
+	}
+	return k, name, ver, nil
+}
+
 var nameSegment = regexp.MustCompile(`^[a-z0-9][a-z0-9_\-]*$`)
 
-// ValidateName rejects skill names that would create unsafe filesystem paths,
-// produce invalid git refs, or trip path traversal. Allowed: one or more
-// `[a-z0-9][a-z0-9_-]*` segments joined by `/`.
-//
-// Examples:
-//
-//	"frontend-design"        → ok
-//	"acme/onboarding"        → ok (namespaced)
-//	".."                     → rejected
-//	"foo/../bar"             → rejected
-//	"My Skill"               → rejected (uppercase, space)
 func ValidateName(name string) error {
 	if name == "" {
-		return fmt.Errorf("skill name is empty")
+		return fmt.Errorf("asset name is empty")
 	}
 	if len(name) > 128 {
-		return fmt.Errorf("skill name too long (max 128 chars)")
+		return fmt.Errorf("asset name too long (max 128 chars)")
 	}
 	if strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
-		return fmt.Errorf("skill name must not start or end with %q", "/")
+		return fmt.Errorf("asset name must not start or end with /")
 	}
 	if strings.Contains(name, "//") {
-		return fmt.Errorf("skill name must not contain empty segments")
+		return fmt.Errorf("asset name must not contain empty segments")
 	}
 	for _, seg := range strings.Split(name, "/") {
 		if seg == "." || seg == ".." {
-			return fmt.Errorf("skill name segment %q is not allowed", seg)
+			return fmt.Errorf("asset name segment %q is not allowed", seg)
 		}
 		if !nameSegment.MatchString(seg) {
-			return fmt.Errorf("skill name segment %q must match [a-z0-9][a-z0-9_-]*", seg)
+			return fmt.Errorf("asset name segment %q must match [a-z0-9][a-z0-9_-]*", seg)
 		}
 	}
 	return nil
 }
 
-// semverRe accepts vX.Y.Z with an optional pre-release tag like "-rc1" or "-beta.2".
-// Matches `git skill tag` input both with and without the leading `v`.
 var semverRe = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-[A-Za-z0-9.\-]+)?$`)
 
-// ValidateVersion rejects version strings that are not SemVer-shaped.
-// Accepts `1.2.3`, `v1.2.3`, `1.2.3-rc1`, `v1.2.3-beta.2`.
 func ValidateVersion(version string) error {
 	if version == "" {
 		return fmt.Errorf("version is empty")
@@ -67,43 +136,4 @@ func ValidateVersion(version string) error {
 		return fmt.Errorf("version %q is not SemVer (expected vX.Y.Z, e.g. v1.0.0)", version)
 	}
 	return nil
-}
-
-// Ref returns the full ref path for a skill.
-// Caller must have validated the name via ValidateName first.
-//
-//	"frontend-design" → "refs/skills/frontend-design"
-//	"nir/boxy"        → "refs/skills/nir/boxy"
-func Ref(name string) string {
-	return Prefix + name
-}
-
-// TagRef returns the ref for a tagged skill version.
-// Caller must have validated name and version first.
-//
-//	("frontend-design", "1.2.0") → "refs/skill-tags/frontend-design/v1.2.0"
-func TagRef(name, version string) string {
-	v := version
-	if !strings.HasPrefix(v, "v") {
-		v = "v" + v
-	}
-	return fmt.Sprintf("%s%s/%s", TagPrefix, name, v)
-}
-
-// Pattern returns a glob for listing all skills.
-func Pattern() string {
-	return Prefix + "*"
-}
-
-// Refspec returns push/fetch refspecs for skills.
-func PushRefspec() string {
-	return Prefix + "*:" + Prefix + "*"
-}
-
-func FetchRefspec() string {
-	return "+" + Prefix + "*:" + Prefix + "*"
-}
-
-func FetchTagRefspec() string {
-	return "+" + TagPrefix + "*:" + TagPrefix + "*"
 }

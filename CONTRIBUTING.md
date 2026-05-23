@@ -32,14 +32,24 @@ git config --global user.name "Your Name"
 ## Project layout
 
 ```
-cmd/git-skill/main.go     — CLI entry point; one function per command
-internal/git/plumbing.go  — thin wrappers around git plumbing commands
-internal/skill/meta.go    — SKILL.md parsing and scaffolding
-internal/refs/refs.go     — ref naming conventions
-internal/lock/lock.go     — skill.lock serialization
+cmd/git-skill/main.go        — entry point; argv[0] profile dispatch
+cmd/git-skill/dispatch.go    — Run() routes name → command function
+cmd/git-skill/wire.go        — registers each command in the dispatch table
+cmd/git-skill/commands/      — one file per subcommand (add, install, remove, …)
+internal/git/plumbing.go     — thin wrappers around git plumbing commands
+internal/gitops/             — Asset-Kind trailer, fetch, ls-remote discovery
+internal/skill/meta.go       — SKILL.md / AGENT.md parsing and scaffolding
+internal/kind/kind.go        — 4-tier kind discriminator (lock/trailer/frontmatter/filename)
+internal/refs/refs.go        — refs/assets/<kind>/<name> naming conventions
+internal/state/state.go      — assets.json serialization (intent + resolution)
+internal/manifest/manifest.go — git-skill.yaml asset manifest
+internal/runtimes/           — built-in registry + user/project runtimes.yaml
+internal/fs/                 — cross-platform symlink / junction / copy fan-out
+internal/assetignore/        — .assetignore gitignore-style filter
+internal/semver/semver.go    — SemVer 2.0 comparator and spec parser
 ```
 
-The CLI has zero external dependencies — only the Go stdlib and the `git` binary.
+Runtime dependencies are minimal: the Go stdlib, the `git` binary, plus `gopkg.in/yaml.v3` (manifest + runtimes.yaml parsing) and `golang.org/x/sys` (Windows symlink/junction APIs).
 
 ## Design principles
 
@@ -53,16 +63,15 @@ The CLI has zero external dependencies — only the Go stdlib and the `git` bina
 - Keep each commit focused on one thing.
 - Run `go test ./... && bash test.sh` before pushing.
 - Update `SKILL-FORMAT.md` if you change the storage format or ref naming.
-- Update the help text in `cmdXxx` and the `usage()` function if you add or change a command.
+- Update each command's `--help` text if you add or change a command. The top-level command list is generated automatically from the dispatch table (see `printHelp` in `cmd/git-skill/main.go`).
 
 ## Submitting a pull request
 
-Open a PR against `main`. The CI runs unit tests on Linux and macOS across Go 1.22 and 1.23.
+Open a PR against `main`. The CI runs unit tests on Linux, macOS, and Windows across Go 1.22 and 1.23, plus `bash test.sh` integration tests on Linux and macOS.
 
 If you're adding a new command, include:
-- The implementation in `cmd/git-skill/main.go`
-- A case in the `switch` in `main()`
-- An entry in `usage()`
+- A new file in `cmd/git-skill/commands/` whose exported function matches `func(commands.Profile, []string, io.Writer, io.Writer) error`
+- A `register("<name>", ...)` entry in `cmd/git-skill/wire.go` that wraps the new command function
 - Coverage in `test.sh`
 - Unit tests where the logic is non-trivial
 

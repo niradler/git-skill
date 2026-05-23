@@ -207,3 +207,45 @@ func TestScaffold_ExistingDirNoError(t *testing.T) {
 		t.Errorf("Scaffold into existing dir failed: %v", err)
 	}
 }
+
+func TestParseFrontmatter_Kind(t *testing.T) {
+	dir := t.TempDir()
+	writeSKILL(t, dir, "---\nname: x\nkind: agent\n---\n")
+	fm, err := ParseFrontmatter(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fm.Kind != "agent" {
+		t.Errorf("Kind = %q", fm.Kind)
+	}
+}
+
+func TestParseFrontmatter_AGENTmd(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "AGENT.md"),
+		[]byte("---\nname: x\nkind: agent\n---\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	fm, err := ParseFrontmatter(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fm.MarkerFile != "AGENT.md" {
+		t.Errorf("MarkerFile = %q", fm.MarkerFile)
+	}
+}
+
+func TestParseFrontmatter_LowercaseMarker(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "skill.md"),
+		[]byte("---\nname: x\n---\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	fm, err := ParseFrontmatter(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.ToLower(fm.MarkerFile) != "skill.md" {
+		t.Errorf("MarkerFile = %q", fm.MarkerFile)
+	}
+}

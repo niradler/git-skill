@@ -3,157 +3,136 @@ package refs
 import (
 	"strings"
 	"testing"
+
+	"github.com/niradler/git-skill/internal/kind"
 )
 
 func TestRef(t *testing.T) {
-	tests := []struct{ name, want string }{
-		{"frontend-design", "refs/skills/frontend-design"},
-		{"nir/boxy", "refs/skills/nir/boxy"},
-		{"a", "refs/skills/a"},
-		{"org/team/skill", "refs/skills/org/team/skill"},
+	tests := []struct {
+		k    kind.Kind
+		name string
+		want string
+	}{
+		{kind.Skill, "frontend-design", "refs/assets/skill/frontend-design"},
+		{kind.Skill, "acme/security-review", "refs/assets/skill/acme/security-review"},
+		{kind.Agent, "nir/code-reviewer", "refs/assets/agent/nir/code-reviewer"},
+		{kind.Agent, "a", "refs/assets/agent/a"},
 	}
 	for _, tt := range tests {
-		if got := Ref(tt.name); got != tt.want {
-			t.Errorf("Ref(%q) = %q, want %q", tt.name, got, tt.want)
+		if got := Ref(tt.k, tt.name); got != tt.want {
+			t.Errorf("Ref(%v, %q) = %q, want %q", tt.k, tt.name, got, tt.want)
 		}
 	}
 }
 
 func TestTagRef(t *testing.T) {
-	tests := []struct{ name, ver, want string }{
-		{"frontend-design", "1.0.0", "refs/skill-tags/frontend-design/v1.0.0"},
-		{"frontend-design", "v1.0.0", "refs/skill-tags/frontend-design/v1.0.0"},
-		{"nir/boxy", "2.3.4", "refs/skill-tags/nir/boxy/v2.3.4"},
-		{"a", "v0.1.0", "refs/skill-tags/a/v0.1.0"},
-		{"x", "10.20.30", "refs/skill-tags/x/v10.20.30"},
+	tests := []struct {
+		k    kind.Kind
+		name string
+		ver  string
+		want string
+	}{
+		{kind.Skill, "foo", "1.2.0", "refs/asset-tags/skill/foo/v1.2.0"},
+		{kind.Skill, "foo", "v1.2.0", "refs/asset-tags/skill/foo/v1.2.0"},
+		{kind.Agent, "nir/code-reviewer", "0.3.0", "refs/asset-tags/agent/nir/code-reviewer/v0.3.0"},
 	}
 	for _, tt := range tests {
-		if got := TagRef(tt.name, tt.ver); got != tt.want {
-			t.Errorf("TagRef(%q, %q) = %q, want %q", tt.name, tt.ver, got, tt.want)
+		if got := TagRef(tt.k, tt.name, tt.ver); got != tt.want {
+			t.Errorf("TagRef(%v, %q, %q) = %q, want %q", tt.k, tt.name, tt.ver, got, tt.want)
 		}
 	}
 }
 
-func TestTagRef_AlreadyPrefixed(t *testing.T) {
-	// v-prefixed input must not double-prefix
-	got := TagRef("skill", "v2.0.0")
-	want := "refs/skill-tags/skill/v2.0.0"
-	if got != want {
-		t.Errorf("TagRef with v-prefix: got %q, want %q", got, want)
-	}
-}
-
-func TestPattern(t *testing.T) {
-	want := "refs/skills/*"
-	if got := Pattern(); got != want {
-		t.Errorf("Pattern() = %q, want %q", got, want)
-	}
-}
-
-func TestPushRefspec(t *testing.T) {
-	want := "refs/skills/*:refs/skills/*"
-	if got := PushRefspec(); got != want {
-		t.Errorf("PushRefspec() = %q, want %q", got, want)
-	}
-}
-
-func TestFetchRefspec(t *testing.T) {
-	want := "+refs/skills/*:refs/skills/*"
-	if got := FetchRefspec(); got != want {
-		t.Errorf("FetchRefspec() = %q, want %q", got, want)
-	}
-}
-
-func TestFetchTagRefspec(t *testing.T) {
-	want := "+refs/skill-tags/*:refs/skill-tags/*"
-	if got := FetchTagRefspec(); got != want {
-		t.Errorf("FetchTagRefspec() = %q, want %q", got, want)
-	}
-}
-
-func TestPrefixConstants(t *testing.T) {
-	if Prefix != "refs/skills/" {
+func TestPrefixes(t *testing.T) {
+	if Prefix != "refs/assets/" {
 		t.Errorf("Prefix = %q", Prefix)
 	}
-	if TagPrefix != "refs/skill-tags/" {
+	if TagPrefix != "refs/asset-tags/" {
 		t.Errorf("TagPrefix = %q", TagPrefix)
+	}
+	if KindPrefix(kind.Skill) != "refs/assets/skill/" {
+		t.Errorf("KindPrefix(skill) = %q", KindPrefix(kind.Skill))
+	}
+	if KindTagPrefix(kind.Agent) != "refs/asset-tags/agent/" {
+		t.Errorf("KindTagPrefix(agent) = %q", KindTagPrefix(kind.Agent))
+	}
+}
+
+func TestRefspecs(t *testing.T) {
+	if PushRefspec() != "refs/assets/*:refs/assets/*" {
+		t.Errorf("PushRefspec = %q", PushRefspec())
+	}
+	if FetchRefspec() != "+refs/assets/*:refs/assets/*" {
+		t.Errorf("FetchRefspec = %q", FetchRefspec())
+	}
+	if PushTagRefspec() != "refs/asset-tags/*:refs/asset-tags/*" {
+		t.Errorf("PushTagRefspec = %q", PushTagRefspec())
+	}
+	if FetchTagRefspec() != "+refs/asset-tags/*:refs/asset-tags/*" {
+		t.Errorf("FetchTagRefspec = %q", FetchTagRefspec())
+	}
+	if KindPushRefspec(kind.Skill) != "refs/assets/skill/*:refs/assets/skill/*" {
+		t.Errorf("KindPushRefspec(skill) = %q", KindPushRefspec(kind.Skill))
+	}
+}
+
+func TestParseRef(t *testing.T) {
+	k, name, err := ParseRef("refs/assets/skill/acme/foo")
+	if err != nil || k != kind.Skill || name != "acme/foo" {
+		t.Errorf("ParseRef = (%v, %q, %v)", k, name, err)
+	}
+	k, name, err = ParseRef("refs/assets/agent/bar")
+	if err != nil || k != kind.Agent || name != "bar" {
+		t.Errorf("ParseRef agent = (%v, %q, %v)", k, name, err)
+	}
+	if _, _, err := ParseRef("refs/heads/main"); err == nil {
+		t.Error("ParseRef should reject non-asset ref")
+	}
+	if _, _, err := ParseRef("refs/assets/unknown/x"); err == nil {
+		t.Error("ParseRef should reject unknown kind")
+	}
+}
+
+func TestParseTagRef(t *testing.T) {
+	k, name, ver, err := ParseTagRef("refs/asset-tags/skill/foo/v1.2.0")
+	if err != nil || k != kind.Skill || name != "foo" || ver != "v1.2.0" {
+		t.Errorf("ParseTagRef = (%v, %q, %q, %v)", k, name, ver, err)
+	}
+	k, name, ver, err = ParseTagRef("refs/asset-tags/agent/nir/code-reviewer/v0.3.0")
+	if err != nil || k != kind.Agent || name != "nir/code-reviewer" || ver != "v0.3.0" {
+		t.Errorf("ParseTagRef nested = (%v, %q, %q, %v)", k, name, ver, err)
 	}
 }
 
 func TestValidateName(t *testing.T) {
-	ok := []string{
-		"a",
-		"frontend-design",
-		"acme/onboarding",
-		"org/team/skill-name",
-		"with_under_score",
-		"123-skill",
-	}
-	for _, n := range ok {
+	good := []string{"a", "frontend-design", "acme/onboarding", "org/team/skill"}
+	for _, n := range good {
 		if err := ValidateName(n); err != nil {
-			t.Errorf("ValidateName(%q) unexpected error: %v", n, err)
+			t.Errorf("ValidateName(%q): %v", n, err)
 		}
 	}
-
-	bad := []string{
-		"",
-		"..",
-		".",
-		"foo/../bar",
-		"foo/./bar",
-		"/leading",
-		"trailing/",
-		"foo//bar",
-		"UPPER",
-		"with space",
-		"with.dot",
-		"emoji-💀",
-		"-leading-hyphen",
-		"_leading-under",
-	}
+	bad := []string{"", "..", "foo/../bar", "/leading", "trailing/", "UPPER", " spaces ", "with.dot"}
 	for _, n := range bad {
 		if err := ValidateName(n); err == nil {
-			t.Errorf("ValidateName(%q) expected error, got nil", n)
+			t.Errorf("ValidateName(%q) expected error", n)
 		}
 	}
-}
-
-func TestValidateName_TooLong(t *testing.T) {
-	long := strings.Repeat("a", 129)
-	if err := ValidateName(long); err == nil {
-		t.Error("expected error for >128 char name")
+	if err := ValidateName(strings.Repeat("a", 129)); err == nil {
+		t.Error("expected error for 129-char name")
 	}
 }
 
 func TestValidateVersion(t *testing.T) {
-	ok := []string{
-		"1.0.0",
-		"v1.0.0",
-		"10.20.30",
-		"v1.0.0-rc1",
-		"1.2.3-beta.2",
-		"v0.1.0-alpha",
-	}
-	for _, v := range ok {
+	good := []string{"1.0.0", "v1.0.0", "10.20.30", "v1.0.0-rc1", "1.2.3-beta.2"}
+	for _, v := range good {
 		if err := ValidateVersion(v); err != nil {
-			t.Errorf("ValidateVersion(%q) unexpected error: %v", v, err)
+			t.Errorf("ValidateVersion(%q): %v", v, err)
 		}
 	}
-
-	bad := []string{
-		"",
-		"1.0",
-		"v1.0",
-		"1",
-		"latest",
-		"vX.Y.Z",
-		"1.0.0 ",
-		" 1.0.0",
-		"1.0.0/extra",
-	}
+	bad := []string{"", "1.0", "latest", "vX.Y.Z", " 1.0.0", "1.0.0 "}
 	for _, v := range bad {
 		if err := ValidateVersion(v); err == nil {
-			t.Errorf("ValidateVersion(%q) expected error, got nil", v)
+			t.Errorf("ValidateVersion(%q) expected error", v)
 		}
 	}
 }

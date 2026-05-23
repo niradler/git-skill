@@ -570,3 +570,35 @@ func TestMkTree(t *testing.T) {
 		t.Errorf("MkTree SHA = %q (len %d), want 40 chars", treeSHA, len(treeSHA))
 	}
 }
+
+// ── CommitTreeWithMessageFile ─────────────────────────────────────────────────
+
+func TestCommitTreeWithMessageFilePreservesTrailers(t *testing.T) {
+	dir := setupRepo(t) // sets cwd to dir for duration of test
+
+	if err := os.WriteFile(filepath.Join(dir, "f.txt"), []byte("hi"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	blob, err := HashBlob(filepath.Join(dir, "f.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree, err := MkTree("100644 blob " + blob + "\tf.txt\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	msg := "feat: add f\n\nbody\n\nAsset-Kind: skill\n"
+	commit, err := CommitTreeWithMessageFile(tree, msg)
+	if err != nil {
+		t.Fatalf("CommitTreeWithMessageFile: %v", err)
+	}
+
+	out, err := Run("cat-file", "-p", commit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "Asset-Kind: skill") {
+		t.Errorf("trailer not preserved:\n%s", out)
+	}
+}
