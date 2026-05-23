@@ -1,9 +1,20 @@
-// Package runtimes is the built-in registry mapping runtime names (e.g.
-// "claude", "cursor") to per-kind install path templates. See spec L9.6.
+// Package runtimes is the built-in registry of per-runtime, per-kind
+// asset→destination mappings. A Mapping declares which subtree of the
+// canonical asset (From) materializes to which path in the consumer (To).
 //
-// Authors of git-skill add new runtimes by editing this file. Consumers who
-// need a custom path override the lock entry's runtimes map directly (the
-// lock holds full explicit paths; this registry only seeds the initial values).
+// To template:
+//   - trailing "/" → directory materialization (the From subtree fans out
+//     into the directory)
+//   - no trailing "/" → single-file materialization (one file at To)
+//   - "<name>" placeholder is replaced with the asset name
+//
+// From template:
+//   - "" or "." → the whole canonical tree
+//   - otherwise a relative path inside the canonical tree (file or dir)
+//
+// Consumers override mappings per-entry in the lock file (assets.json
+// runtimes map). Higher-precedence sources (asset manifest, runtimes.yaml
+// config) will be layered on in later phases.
 package runtimes
 
 import (
@@ -14,37 +25,47 @@ import (
 	"github.com/niradler/git-skill/internal/kind"
 )
 
-type pathTemplate struct {
-	prefix string
-	suffix string
+type Mapping struct {
+	From string
+	To   string
 }
 
-var registry = map[string]map[kind.Kind]pathTemplate{
+// IsDir reports whether the mapping materializes as a directory (To ends with "/").
+func (m Mapping) IsDir() bool { return strings.HasSuffix(m.To, "/") }
+
+var registry = map[string]map[kind.Kind]Mapping{
 	"claude": {
-		kind.Skill: {prefix: ".claude/skills/", suffix: ""},
-		kind.Agent: {prefix: ".claude/agents/", suffix: ".md"},
+		kind.Skill: {From: ".", To: ".claude/skills/<name>/"},
+		kind.Agent: {From: "AGENT.md", To: ".claude/agents/<name>.md"},
 	},
 	"cursor": {
-		kind.Skill: {prefix: ".cursor/rules/", suffix: ""},
+		kind.Skill: {From: ".", To: ".cursor/rules/<name>/"},
 	},
 	"codex": {
-		kind.Skill: {prefix: ".agents/skills/", suffix: ""},
+		kind.Skill: {From: ".", To: ".agents/skills/<name>/"},
+		kind.Agent: {From: "agent.toml", To: ".codex/agents/<name>.toml"},
 	},
 	"opencode": {
-		kind.Skill: {prefix: ".agents/skills/", suffix: ""},
+		kind.Skill: {From: ".", To: ".agents/skills/<name>/"},
 	},
 }
 
-func Resolve(runtime string, k kind.Kind, asset string) (string, error) {
+// Resolve returns the built-in Mapping for (runtime, kind) with the
+// "<name>" placeholder substituted. The From field is returned verbatim
+// (no placeholder expansion in v1).
+func Resolve(runtime string, k kind.Kind, asset string) (Mapping, error) {
 	entry, ok := registry[runtime]
 	if !ok {
-		return "", fmt.Errorf("unknown runtime %q (known: %s)", runtime, strings.Join(Known(), ", "))
+		return Mapping{}, fmt.Errorf("unknown runtime %q (known: %s)", runtime, strings.Join(Known(), ", "))
 	}
 	tpl, ok := entry[k]
 	if !ok {
-		return "", fmt.Errorf("runtime %q does not support kind %s", runtime, k)
+		return Mapping{}, fmt.Errorf("runtime %q does not support kind %s", runtime, k)
 	}
-	return tpl.prefix + asset + tpl.suffix, nil
+	return Mapping{
+		From: tpl.From,
+		To:   strings.ReplaceAll(tpl.To, "<name>", asset),
+	}, nil
 }
 
 func Known() []string {
@@ -56,11 +77,14 @@ func Known() []string {
 	return names
 }
 
+// GitignoreLines returns the set of destination prefixes (the directory
+// portion of each registered To template, with the "<name>" placeholder
+// stripped) for seeding .gitignore.
 func GitignoreLines() []string {
 	seen := map[string]struct{}{}
 	for _, kinds := range registry {
 		for _, tpl := range kinds {
-			seen[tpl.prefix] = struct{}{}
+			seen[gitignorePrefix(tpl.To)] = struct{}{}
 		}
 	}
 	out := make([]string, 0, len(seen))
@@ -69,4 +93,20 @@ func GitignoreLines() []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// gitignorePrefix returns the parent directory of a To template, suitable
+// for a .gitignore entry. Examples:
+//
+//	".claude/skills/<name>/"   → ".claude/skills/"
+//	".claude/agents/<name>.md" → ".claude/agents/"
+//	".tools/agents/static.md"  → ".tools/agents/" (no placeholder; LastIndex fallback)
+func gitignorePrefix(to string) string {
+	if i := strings.Index(to, "<name>"); i >= 0 {
+		return to[:i]
+	}
+	if i := strings.LastIndex(to, "/"); i >= 0 {
+		return to[:i+1]
+	}
+	return to
 }

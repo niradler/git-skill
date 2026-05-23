@@ -53,7 +53,7 @@ func TestInstallFromState(t *testing.T) {
 	st.Set(kind.Skill, "acme/x", state.Entry{
 		Spec:      "v1.0.0",
 		Remote:    upstream,
-		Runtimes:  []string{"claude"},
+		Runtimes:  map[string]state.RuntimeOverride{"claude": {}},
 		Version:   "v1.0.0",
 		Commit:    commit,
 		Canonical: "skills/acme/x",
@@ -75,6 +75,12 @@ func TestInstallFromState(t *testing.T) {
 }
 
 func makeUpstreamAgent(t *testing.T, name, body string) (string, string) {
+	return makeUpstreamAgentFiles(t, name, map[string]string{"AGENT.md": body})
+}
+
+// makeUpstreamAgentFiles seeds an upstream agent repo with arbitrary
+// files at the root of the asset tree (e.g. AGENT.md + agent.toml).
+func makeUpstreamAgentFiles(t *testing.T, name string, files map[string]string) (string, string) {
 	t.Helper()
 	dir := t.TempDir()
 	for _, args := range [][]string{
@@ -93,7 +99,13 @@ func makeUpstreamAgent(t *testing.T, name, body string) (string, string) {
 	os.Chdir(dir)
 	defer os.Chdir(wd)
 	os.MkdirAll("src", 0755)
-	os.WriteFile("src/AGENT.md", []byte(body), 0644)
+	for path, body := range files {
+		full := filepath.Join("src", path)
+		if d := filepath.Dir(full); d != "." {
+			os.MkdirAll(d, 0755)
+		}
+		os.WriteFile(full, []byte(body), 0644)
+	}
 	tree, _ := git.WriteTreeFromDir(filepath.Join(dir, "src"))
 	commit, _ := git.CommitTree(tree, "init")
 	_ = git.UpdateRef("refs/assets/agent/"+name, commit)
@@ -115,7 +127,7 @@ func TestInstallAgentFansOutAsFile(t *testing.T) {
 	st.Set(kind.Agent, "acme/reviewer", state.Entry{
 		Spec:      "v1.0.0",
 		Remote:    upstream,
-		Runtimes:  []string{"claude"},
+		Runtimes:  map[string]state.RuntimeOverride{"claude": {}},
 		Version:   "v1.0.0",
 		Commit:    commit,
 		Canonical: "agents/acme/reviewer",
@@ -143,6 +155,92 @@ func TestInstallAgentFansOutAsFile(t *testing.T) {
 	got, _ := os.ReadFile(rtPath)
 	if string(got) != body {
 		t.Errorf("runtime agent body mismatch:\n got=%q\nwant=%q", string(got), body)
+	}
+}
+
+// A6: an agent installed for two runtimes (claude + codex) fans out to
+// both destinations using the registry's per-runtime From mapping.
+func TestInstallAgentDualRuntimes_ClaudeAndCodex(t *testing.T) {
+	mdBody := "---\nname: reviewer\n---\n# reviewer"
+	tomlBody := "name = \"reviewer\"\n"
+	upstream, commit := makeUpstreamAgentFiles(t, "acme/reviewer", map[string]string{
+		"AGENT.md":   mdBody,
+		"agent.toml": tomlBody,
+	})
+
+	consumer := t.TempDir()
+	wd, _ := os.Getwd()
+	os.Chdir(consumer)
+	defer os.Chdir(wd)
+	exec.Command("git", "init", "-q").Run()
+	exec.Command("git", "config", "core.autocrlf", "false").Run()
+
+	st := state.New()
+	st.Set(kind.Agent, "acme/reviewer", state.Entry{
+		Spec:      "v1.0.0",
+		Remote:    upstream,
+		Runtimes:  map[string]state.RuntimeOverride{"claude": {}, "codex": {}},
+		Version:   "v1.0.0",
+		Commit:    commit,
+		Canonical: "agents/acme/reviewer",
+	})
+	if err := st.Write(consumer); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Install(profileAgentOnly, nil, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+
+	got, err := os.ReadFile(".claude/agents/acme/reviewer.md")
+	if err != nil {
+		t.Fatalf("claude fan-out missing: %v", err)
+	}
+	if string(got) != mdBody {
+		t.Errorf("claude body mismatch: %q", string(got))
+	}
+	got, err = os.ReadFile(".codex/agents/acme/reviewer.toml")
+	if err != nil {
+		t.Fatalf("codex fan-out missing: %v", err)
+	}
+	if string(got) != tomlBody {
+		t.Errorf("codex body mismatch: %q", string(got))
+	}
+}
+
+// Install respects a per-entry "to" override and writes to the
+// overridden path instead of the registry default.
+func TestInstall_RespectsToOverride(t *testing.T) {
+	upstream, commit := makeUpstreamSkill(t, "acme/x")
+
+	consumer := t.TempDir()
+	wd, _ := os.Getwd()
+	os.Chdir(consumer)
+	defer os.Chdir(wd)
+	exec.Command("git", "init", "-q").Run()
+	exec.Command("git", "config", "core.autocrlf", "false").Run()
+
+	st := state.New()
+	st.Set(kind.Skill, "acme/x", state.Entry{
+		Spec:      "v1.0.0",
+		Remote:    upstream,
+		Runtimes:  map[string]state.RuntimeOverride{"claude": {To: ".custom/claude/acme/x/"}},
+		Version:   "v1.0.0",
+		Commit:    commit,
+		Canonical: "skills/acme/x",
+	})
+	if err := st.Write(consumer); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Install(profileSkillOnly, nil, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if _, err := os.Stat(".custom/claude/acme/x/SKILL.md"); err != nil {
+		t.Errorf("override path not materialized: %v", err)
+	}
+	if _, err := os.Stat(".claude/skills/acme/x/SKILL.md"); err == nil {
+		t.Errorf("registry default path should not exist when overridden")
 	}
 }
 

@@ -5,12 +5,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/niradler/git-skill/internal/assetignore"
 	xfs "github.com/niradler/git-skill/internal/fs"
 	"github.com/niradler/git-skill/internal/git"
 	"github.com/niradler/git-skill/internal/gitops"
 	"github.com/niradler/git-skill/internal/kind"
+	"github.com/niradler/git-skill/internal/refs"
 	"github.com/niradler/git-skill/internal/runtimes"
 	"github.com/niradler/git-skill/internal/state"
 )
@@ -44,7 +46,11 @@ func installOne(repoRoot string, st *state.State, k kind.Kind, name string, e st
 	if e.Commit == "" {
 		return fmt.Errorf("entry has no commit pin (run 'update %s/%s' first)", k, name)
 	}
-	if err := gitops.FetchPinnedCommit(e.Remote, "refs/assets/"+k.String()+"/"+name, e.Commit); err != nil {
+	var fallbackRefs []string
+	if e.Version != "" {
+		fallbackRefs = append(fallbackRefs, refs.TagRef(k, name, e.Version))
+	}
+	if err := gitops.FetchPinnedCommit(e.Remote, refs.Ref(k, name), e.Commit, fallbackRefs...); err != nil {
 		return fmt.Errorf("fetch %s: %w", e.Remote, err)
 	}
 	canonAbs := filepath.Join(repoRoot, e.Canonical)
@@ -70,54 +76,94 @@ func installOne(repoRoot string, st *state.State, k kind.Kind, name string, e st
 	if err != nil {
 		return fmt.Errorf("load .assetignore: %w", err)
 	}
-	for _, rt := range e.Runtimes {
-		target, err := runtimes.Resolve(rt, k, name)
+	// Iterate in deterministic order so logs and side effects are stable.
+	for _, rt := range sortedRuntimes(e.Runtimes) {
+		override := e.Runtimes[rt]
+		mapping, err := resolveMapping(rt, k, name, override)
 		if err != nil {
-			return fmt.Errorf("runtime %s: %w", rt, err)
+			return err
 		}
-		linkAbs := filepath.Join(repoRoot, target)
-		switch k {
-		case kind.Skill:
-			if err := os.MkdirAll(filepath.Dir(linkAbs), 0755); err != nil {
-				return err
-			}
-			if err := os.RemoveAll(linkAbs); err != nil {
-				return err
-			}
-			if e.Dev {
-				if _, err := xfs.EnsureLink(canonAbs, linkAbs, true); err != nil {
-					return fmt.Errorf("link %s: %w", linkAbs, err)
-				}
-			} else {
-				// matcher.Match returns true = should be ignored/excluded.
-				// CopyTree filter returns true = skip. The semantics align directly.
-				filter := func(rel string) bool { return matcher.Match(rel) }
-				if err := xfs.CopyTree(canonAbs, linkAbs, filter); err != nil {
-					return fmt.Errorf("copy %s: %w", linkAbs, err)
-				}
-			}
-		case kind.Agent:
-			markerSrc := filepath.Join(canonAbs, "AGENT.md")
-			if _, err := os.Stat(markerSrc); err != nil {
-				return fmt.Errorf("agent marker AGENT.md missing in %s", canonAbs)
-			}
-			if err := os.MkdirAll(filepath.Dir(linkAbs), 0755); err != nil {
-				return err
-			}
-			if err := os.RemoveAll(linkAbs); err != nil {
-				return err
-			}
-			if e.Dev {
-				if _, err := xfs.EnsureLink(markerSrc, linkAbs, false); err != nil {
-					return fmt.Errorf("link %s: %w", linkAbs, err)
-				}
-			} else {
-				if err := xfs.CopyFile(markerSrc, linkAbs); err != nil {
-					return fmt.Errorf("copy %s: %w", linkAbs, err)
-				}
-			}
+		if err := materialize(canonAbs, repoRoot, mapping, e.Dev, matcher); err != nil {
+			return fmt.Errorf("runtime %s: %w", rt, err)
 		}
 	}
 	fmt.Fprintf(stdout, "  %s %s @ %s\n", k, name, e.Version)
 	return nil
+}
+
+// resolveMapping returns the effective Mapping for a runtime: registry
+// default with any per-entry override (lock file) layered on top.
+func resolveMapping(rt string, k kind.Kind, name string, override state.RuntimeOverride) (runtimes.Mapping, error) {
+	base, err := runtimes.Resolve(rt, k, name)
+	if err != nil {
+		return runtimes.Mapping{}, err
+	}
+	if override.From != "" {
+		base.From = override.From
+	}
+	if override.To != "" {
+		base.To = override.To
+	}
+	return base, nil
+}
+
+// materialize realizes a single Mapping from canonAbs into repoRoot.
+// Trailing "/" on To selects directory fanout; otherwise single-file.
+// In dev mode files are symlinked/junctioned instead of copied.
+func materialize(canonAbs, repoRoot string, m runtimes.Mapping, dev bool, matcher *assetignore.Matcher) error {
+	from := m.From
+	if from == "" {
+		from = "."
+	}
+	srcAbs := filepath.Join(canonAbs, from)
+	dstAbs := filepath.Join(repoRoot, m.To)
+	info, err := os.Stat(srcAbs)
+	if err != nil {
+		return fmt.Errorf("source %q missing in canonical: %w", from, err)
+	}
+	if err := os.MkdirAll(filepath.Dir(dstAbs), 0755); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(dstAbs); err != nil {
+		return err
+	}
+	if m.IsDir() {
+		if !info.IsDir() {
+			return fmt.Errorf("mapping target %q ends with '/' but source %q is a file", m.To, from)
+		}
+		if dev {
+			if _, err := xfs.EnsureLink(srcAbs, dstAbs, true); err != nil {
+				return fmt.Errorf("link %s: %w", dstAbs, err)
+			}
+			return nil
+		}
+		filter := func(rel string) bool { return matcher.Match(rel) }
+		if err := xfs.CopyTree(srcAbs, dstAbs, filter); err != nil {
+			return fmt.Errorf("copy %s: %w", dstAbs, err)
+		}
+		return nil
+	}
+	// Single-file mapping.
+	if info.IsDir() {
+		return fmt.Errorf("mapping target %q is a file but source %q is a directory", m.To, from)
+	}
+	if dev {
+		if _, err := xfs.EnsureLink(srcAbs, dstAbs, false); err != nil {
+			return fmt.Errorf("link %s: %w", dstAbs, err)
+		}
+		return nil
+	}
+	if err := xfs.CopyFile(srcAbs, dstAbs); err != nil {
+		return fmt.Errorf("copy %s: %w", dstAbs, err)
+	}
+	return nil
+}
+
+func sortedRuntimes(m map[string]state.RuntimeOverride) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }

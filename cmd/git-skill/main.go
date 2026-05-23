@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 )
 
 func main() {
@@ -49,7 +50,12 @@ func register(name string, h handler) {
 
 func printHelp(p Profile, w io.Writer) {
 	fmt.Fprintf(w, "usage: %s <command> [options]\n\ncommands:\n", p.Name)
+	names := make([]string, 0, len(commands))
 	for name := range commands {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
 		fmt.Fprintf(w, "  %s\n", name)
 	}
 }

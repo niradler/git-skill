@@ -17,9 +17,20 @@ func Run(args ...string) (string, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(stderr.String()))
+		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), commandOutput(stdout.String(), stderr.String()))
 	}
 	return strings.TrimSpace(stdout.String()), nil
+}
+
+func commandOutput(stdout, stderr string) string {
+	out := strings.TrimSpace(stderr)
+	if extra := strings.TrimSpace(stdout); extra != "" {
+		if out != "" {
+			out += "\n"
+		}
+		out += extra
+	}
+	return out
 }
 
 func RunLines(args ...string) ([]string, error) {
@@ -211,7 +222,7 @@ func runIn(dir string, args ...string) (string, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(stderr.String()))
+		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), commandOutput(stdout.String(), stderr.String()))
 	}
 	return strings.TrimSpace(stdout.String()), nil
 }

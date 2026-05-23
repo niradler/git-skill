@@ -25,6 +25,7 @@ scripts/*.sh
 	}{
 		{"eval/foo.txt", false, true},
 		{"eval/", true, true},
+		{"eval", false, false},
 		{"tests/", true, true},
 		{"src/main.go", false, false},
 		{"thoughts.draft", false, true},

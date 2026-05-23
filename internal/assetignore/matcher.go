@@ -147,8 +147,7 @@ func (p pattern) matchSegsRooted(segs []string, isDir bool) bool {
 		//   1. The directory entry itself: segs == p.parts and isDir
 		//   2. Any path whose leading segments match p.parts (the path is inside that dir)
 		if len(segs) == len(p.parts) {
-			return segmentsMatch(p.parts, segs) && (isDir || true)
-			// gitignore: trailing / means "this dir OR anything inside it"
+			return segmentsMatch(p.parts, segs) && isDir
 		}
 		if len(segs) > len(p.parts) {
 			return segmentsMatch(p.parts, segs[:len(p.parts)])

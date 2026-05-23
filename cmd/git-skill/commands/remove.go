@@ -27,7 +27,10 @@ func Remove(p Profile, args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	cwd, _ := os.Getwd()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
 	st, err := state.Read(cwd)
 	if err != nil {
 		return err
@@ -39,12 +42,15 @@ func Remove(p Profile, args []string, stdout, stderr io.Writer) error {
 	if err := os.RemoveAll(filepath.Join(cwd, entry.Canonical)); err != nil {
 		return fmt.Errorf("remove canonical: %w", err)
 	}
-	for _, rt := range entry.Runtimes {
-		target, err := runtimes.Resolve(rt, k, name)
+	for rt, override := range entry.Runtimes {
+		mapping, err := runtimes.Resolve(rt, k, name)
 		if err != nil {
 			continue
 		}
-		_ = os.RemoveAll(filepath.Join(cwd, target))
+		if override.To != "" {
+			mapping.To = override.To
+		}
+		_ = os.RemoveAll(filepath.Join(cwd, mapping.To))
 	}
 	st.Delete(k, name)
 	if err := st.Write(cwd); err != nil {

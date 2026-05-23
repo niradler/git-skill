@@ -13,6 +13,12 @@ import (
 	"github.com/niradler/git-skill/internal/state"
 )
 
+// stringSliceFlag implements flag.Value for repeatable string flags.
+type stringSliceFlag []string
+
+func (s *stringSliceFlag) String() string     { return strings.Join(*s, ",") }
+func (s *stringSliceFlag) Set(v string) error { *s = append(*s, v); return nil }
+
 func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("add", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -20,6 +26,8 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 	runtimesFlag := fs.String("runtime", "", "comma-separated runtime names; omitted = canonical only")
 	dev := fs.Bool("dev", false, "install all files (symlink/junction); default is prod (copy + .assetignore)")
 	kindFlag := fs.String("kind", "", "asset kind (skill|agent); inferred from profile when omitted")
+	var targets stringSliceFlag
+	fs.Var(&targets, "target", "override install path for a runtime, form <runtime>=<path>; repeatable")
 
 	// Reorder args so flags come before positional arguments, because flag.Parse
 	// stops at the first non-flag argument. Users may write: add <name> --from <url>.
@@ -41,7 +49,10 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
-	cwd, _ := os.Getwd()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
 	st, err := state.Read(cwd)
 	if err != nil {
 		return err
@@ -56,7 +67,10 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
-	rtList := splitRuntimes(*runtimesFlag)
+	rtMap, err := buildRuntimes(*runtimesFlag, targets)
+	if err != nil {
+		return err
+	}
 	canonical := filepath.Join(st.Root(k), name)
 	specForState := spec
 	if specForState == "" {
@@ -70,7 +84,7 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 	entry := state.Entry{
 		Spec:      specForState,
 		Remote:    *remote,
-		Runtimes:  rtList,
+		Runtimes:  rtMap,
 		Dev:       *dev,
 		Version:   resolved.Version,
 		Commit:    resolved.Commit,
@@ -83,6 +97,37 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 
 	fmt.Fprintf(stdout, "+ %s %s @ %s\n", k, name, resolved.Version)
 	return installOne(cwd, st, k, name, entry, stdout)
+}
+
+// buildRuntimes merges the --runtime list and the --target overrides into
+// a single runtime override map. Every --target name must also appear in
+// --runtime (or the map seeded from it).
+func buildRuntimes(runtimeList string, targets []string) (map[string]state.RuntimeOverride, error) {
+	out := map[string]state.RuntimeOverride{}
+	for _, p := range strings.Split(runtimeList, ",") {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		out[p] = state.RuntimeOverride{}
+	}
+	for _, t := range targets {
+		i := strings.Index(t, "=")
+		if i <= 0 || i == len(t)-1 {
+			return nil, fmt.Errorf("--target %q: expected <runtime>=<path>", t)
+		}
+		rt, path := t[:i], t[i+1:]
+		cur, ok := out[rt]
+		if !ok {
+			return nil, fmt.Errorf("--target %s: runtime not in --runtime list", rt)
+		}
+		cur.To = path
+		out[rt] = cur
+	}
+	if len(out) == 0 {
+		return nil, nil
+	}
+	return out, nil
 }
 
 // splitFlagsAndPositional separates flag args (starting with "-") from
@@ -141,15 +186,4 @@ func splitNameSpec(s string) (name, spec string) {
 		return s[:i], s[i+1:]
 	}
 	return s, ""
-}
-
-func splitRuntimes(s string) []string {
-	parts := strings.Split(s, ",")
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		if p = strings.TrimSpace(p); p != "" {
-			out = append(out, p)
-		}
-	}
-	return out
 }

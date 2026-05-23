@@ -68,12 +68,12 @@ Track and publish a skill from your repo.
 # 1. Scaffold assets.json + .gitignore entries
 git skill init
 
-# 2. Author a skill under .assets/skill/<name>/ with a SKILL.md
-mkdir -p .assets/skill/code-review
-$EDITOR .assets/skill/code-review/SKILL.md
+# 2. Author a skill under skills/<name>/ with a SKILL.md
+mkdir -p skills/code-review
+$EDITOR skills/code-review/SKILL.md
 
 # 3. Snapshot it into refs/assets/skill/code-review
-git skill commit code-review -m "initial cut"
+git skill commit code-review --path skills/code-review -m "initial cut"
 
 # 4. Tag a release
 git skill tag code-review 1.0.0
@@ -124,8 +124,8 @@ A single file at the repo root. Carries both **intent** (what you asked for) and
         "spec": "^1.0.0",
         "version": "1.2.0",
         "commit": "9f3c1a…",
-        "canonical": ".assets/skill/code-review",
-        "runtimes": ["claude"]
+        "canonical": "skills/code-review",
+        "runtimes": { "claude": {} }
       }
     },
     "agent": { … }
@@ -139,18 +139,26 @@ A single file at the repo root. Carries both **intent** (what you asked for) and
 
 ## Runtimes
 
-`runtimes` determines where each asset is materialized. Built-in targets cover the common agent platforms:
+`runtimes` is a map keyed by runtime name; each entry may carry per-asset overrides (`from`, `to`). Empty `{}` means "use the registry defaults". Built-in targets:
 
-| Runtime  | Skill target                | Agent target                |
-|----------|-----------------------------|-----------------------------|
-| claude   | `.claude/skills/<name>/`    | `.claude/agents/<name>.md`  |
-| cursor   | `.cursor/rules/<name>/`     | _(not supported)_           |
-| codex    | `.agents/skills/<name>/`    | _(not supported)_           |
-| opencode | `.agents/skills/<name>/`    | _(not supported)_           |
+| Runtime  | Skill target                | Agent source → target                          |
+|----------|-----------------------------|------------------------------------------------|
+| claude   | `.claude/skills/<name>/`    | `AGENT.md` → `.claude/agents/<name>.md`        |
+| codex    | `.agents/skills/<name>/`    | `agent.toml` → `.codex/agents/<name>.toml`     |
+| cursor   | `.cursor/rules/<name>/`     | _(not supported)_                              |
+| opencode | `.agents/skills/<name>/`    | _(not supported)_                              |
 
-Skills materialize as full trees; agents as the single `AGENT.md` marker. On Unix the tool prefers relative symlinks back to the canonical tree. On Windows it falls back to junctions or full copies.
+A trailing `/` on the target means directory materialization (the whole canonical tree fans out); no trailing slash means a single-file mapping. Authors of agents that target codex ship an `agent.toml` alongside the `AGENT.md` (no in-tool format conversion).
 
-Canonical trees live at `skills/<name>/` and `agents/<name>/` by default (configurable via `config.skillsRoot` / `config.agentsRoot` in `assets.json`). PRs to add new runtimes — including agent support for cursor / codex / opencode — are welcome; see [`internal/runtimes/registry.go`](./internal/runtimes/registry.go).
+Override the target on the fly with `--target <runtime>=<path>` (repeatable). The override is persisted into `assets.json`:
+
+```bash
+git skill add code-review --from … --runtime claude --target claude=.custom/skills/<name>/
+```
+
+Skills materialize as full trees; agent fan-outs depend on the runtime (Claude: `AGENT.md`; Codex: `agent.toml`). On Unix the tool prefers relative symlinks back to the canonical tree. On Windows it falls back to junctions or full copies.
+
+Canonical trees live at `skills/<name>/` and `agents/<name>/` by default (configurable via `config.skillsRoot` / `config.agentsRoot` in `assets.json`). PRs to add new runtimes are welcome; see [`internal/runtimes/registry.go`](./internal/runtimes/registry.go).
 
 ## Commands
 
@@ -174,6 +182,9 @@ discover <url>        enumerate remote assets
 ```
 
 Run with `--help` for full flag listings.
+
+`install` and `remove` manage the canonical path and configured runtime targets in `assets.json`.
+Do not point runtime targets at user-owned files or directories; those paths are treated as git-skill-managed materialization outputs.
 
 ## Asset-Kind trailer
 

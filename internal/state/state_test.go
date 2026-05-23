@@ -34,9 +34,12 @@ func TestReadWriteRoundTrip(t *testing.T) {
 	in := New()
 	in.Config = Config{SkillsRoot: "skills", AgentsRoot: "agents"}
 	in.Set(kind.Skill, "acme/api-conventions", Entry{
-		Spec:      "^v1.2.0",
-		Remote:    "https://github.com/acme/skills",
-		Runtimes:  []string{"claude", "cursor"},
+		Spec:   "^v1.2.0",
+		Remote: "https://github.com/acme/skills",
+		Runtimes: map[string]RuntimeOverride{
+			"claude": {},
+			"cursor": {To: ".custom/cursor/<name>/"},
+		},
 		Version:   "v1.2.4",
 		Commit:    "abc123def4567890abc123def4567890abc12345",
 		Canonical: "skills/acme/api-conventions",
@@ -44,7 +47,7 @@ func TestReadWriteRoundTrip(t *testing.T) {
 	in.Set(kind.Agent, "nir/reviewer", Entry{
 		Spec:      "v0.3.0",
 		Remote:    "https://skillhub.example/nir/agents.git",
-		Runtimes:  []string{"claude"},
+		Runtimes:  map[string]RuntimeOverride{"claude": {}},
 		Requires:  []string{"skill/acme/api-conventions"},
 		Version:   "v0.3.0",
 		Commit:    "fedcba9876543210fedcba9876543210fedcba98",
@@ -111,6 +114,61 @@ func TestRejectBadSpec(t *testing.T) {
 	}
 	if _, err := Read(dir); err == nil {
 		t.Errorf("expected error on garbage spec")
+	}
+}
+
+func TestRejectLegacyRuntimesArray(t *testing.T) {
+	dir := t.TempDir()
+	body := `{"version":1,"assets":{"skill":{"acme/x":{"spec":"v1.0.0","remote":"r","commit":"c","canonical":"skills/acme/x","runtimes":["claude","cursor"]}}}}`
+	if err := os.WriteFile(filepath.Join(dir, Filename), []byte(body), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Read(dir)
+	if err == nil {
+		t.Fatal("expected error rejecting []string runtimes form")
+	}
+	if !strings.Contains(err.Error(), "runtimes") || !strings.Contains(err.Error(), "object") {
+		t.Errorf("error %q should explain the new object shape", err.Error())
+	}
+}
+
+func TestRejectEmptyRuntimeName(t *testing.T) {
+	dir := t.TempDir()
+	body := `{"version":1,"assets":{"skill":{"acme/x":{"spec":"v1.0.0","remote":"r","commit":"c","canonical":"skills/acme/x","runtimes":{"":{}}}}}}`
+	if err := os.WriteFile(filepath.Join(dir, Filename), []byte(body), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Read(dir)
+	if err == nil {
+		t.Fatal("expected error on empty runtime name")
+	}
+	if !strings.Contains(err.Error(), "must not be empty") {
+		t.Errorf("error %q should explain empty name is rejected", err.Error())
+	}
+}
+
+func TestReadAcceptsNewRuntimesObject(t *testing.T) {
+	dir := t.TempDir()
+	body := `{"version":1,"assets":{"skill":{"acme/x":{"spec":"v1.0.0","remote":"r","commit":"c","canonical":"skills/acme/x","runtimes":{"claude":{},"codex":{"to":".custom/<name>/"}}}}}}`
+	if err := os.WriteFile(filepath.Join(dir, Filename), []byte(body), 0644); err != nil {
+		t.Fatal(err)
+	}
+	s, err := Read(dir)
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+	e, ok := s.Get(kind.Skill, "acme/x")
+	if !ok {
+		t.Fatal("entry missing")
+	}
+	if len(e.Runtimes) != 2 {
+		t.Fatalf("Runtimes len = %d, want 2: %+v", len(e.Runtimes), e.Runtimes)
+	}
+	if _, ok := e.Runtimes["claude"]; !ok {
+		t.Errorf("claude missing")
+	}
+	if e.Runtimes["codex"].To != ".custom/<name>/" {
+		t.Errorf("codex.to = %q", e.Runtimes["codex"].To)
 	}
 }
 

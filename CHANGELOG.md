@@ -17,7 +17,8 @@ All notable changes to git-skill are documented here. Format follows [Keep a Cha
 - **4-tier kind discriminator** — existing ref > `--kind` flag > frontmatter > marker filename > profile default. Conflicts produce a warning.
 - **Cross-platform materialization** — Unix relative symlinks; Windows junctions or copy fallback when symlink privilege is unavailable.
 - **`.assetignore`** — gitignore-style filter applied during copy materialization (dev-mode symlinks see the full tree).
-- **Built-in runtime registry** — `claude`, `cursor`, `codex`, `opencode`. Skills materialize as trees; agents as the single `AGENT.md` marker.
+- **Built-in runtime registry** — `claude`, `cursor`, `codex`, `opencode`. Each entry is now a `{from, to}` mapping; trailing `/` on `to` means directory fanout, no slash means single-file. Adds `codex:agent` default (`agent.toml` → `.codex/agents/<name>.toml`).
+- **`--target <runtime>=<path>`** flag on `git skill add` — override the install target for a runtime; the override is persisted into `assets.json`.
 - **Dev mode** — `e.Dev == true` preserves local edits to the canonical tree on re-install. Non-dev installs always refresh from the pinned commit.
 - **Release E2E suite** (`test/e2e/release/`) — 16 tests covering flows, contracts, platform, errors, and idempotency on a real git repo.
 
@@ -25,9 +26,10 @@ All notable changes to git-skill are documented here. Format follows [Keep a Cha
 - **Refs layout** — `refs/skills/<name>` → `refs/assets/skill/<name>`; `refs/skill-tags/<name>/v…` → `refs/asset-tags/skill/<name>/v…`. Agents live under `refs/assets/agent/<name>` and `refs/asset-tags/agent/<name>/v…`.
 - **State file** — `skill.lock` is gone; consumers use `assets.json`.
 - **Indexer (SkillHub)** — now indexes both kinds from `refs/assets/<kind>/<name>` and tag refs under `refs/asset-tags/<kind>/<name>/v…`.
+- **`assets.json` `runtimes` field** — was `["claude", "codex"]` (list of names); now an object `{"claude": {}, "codex": {"to": ".custom/<name>/"}}`. Each value is a per-runtime override (`from`, `to`); empty `{}` means "use the registry default". The legacy `[]string` form is explicitly rejected with a clear error.
 
 ### Removed
-- `git skill track` — superseded by the `init` + author-under-`.assets/<kind>/<name>/` + `commit` flow.
+- `git skill track` — superseded by the `init` + author-under-`skills/<name>/` or `agents/<name>/` + `commit --path` flow.
 - `git skill get` — replaced by `add` + `install`. The standalone `skillhub get` subcommand has also been deleted.
 - `git skill sync` — `install` is now idempotent and re-materializes everything in `assets.json`.
 - `skill.lock` v2 — replaced by `assets.json`.
