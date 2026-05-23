@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>git-skill — git-native skill versioning</title>
-<meta name="description" content="git-skill stores AI agent skills as git tree objects, versions them with git tags, and pins exact commits in skill.lock for reproducible installs." />
+<title>git-skill — git-native asset versioning for skills and agents</title>
+<meta name="description" content="git-skill stores AI agent skills and agents as git tree objects under refs/assets/&lt;kind&gt;/&lt;name&gt;, versions them with git tags, and pins exact commits in assets.json for reproducible installs across teams." />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -100,23 +100,25 @@
   <div class="max-w-[880px] mx-auto text-center">
     <div class="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-pill border border-subtle-ash text-[12px] text-midtone-gray">
       <span class="w-1.5 h-1.5 rounded-full bg-success-green"></span>
-      v0.1.1 — initial public release
+      asset format — skills and agents, one binary
     </div>
     <h1 class="text-[48px] leading-[1] tracking-[-2.4px] font-semibold text-deep-black">
-      Skills as git objects.
+      Skills and agents as git objects.
     </h1>
     <p class="mt-6 text-[18px] leading-[1.33] tracking-[-0.45px] text-rich-black max-w-[640px] mx-auto">
-      git-skill stores your AI agent skills the same way git stores code — as tree objects, versioned with tags, distributed with any git remote, pinned by commit SHA for reproducible installs.
+      git-skill stores AI agent assets — skills and agents — under <code class="mono">refs/assets/&lt;kind&gt;/&lt;name&gt;</code>, versioned with tags, distributed with any git remote, pinned by exact commit SHA in <code class="mono">assets.json</code> for reproducible installs across your team.
     </p>
     <div class="mt-10 flex flex-wrap items-center justify-center gap-2">
       <a href="#quick-start" class="px-12 py-2 bg-deep-black text-canvas-white rounded-[10px] hover:opacity-90 font-medium">Quick start</a>
-      <a href="https://github.com/niradler/git-skill/releases/tag/v0.1.1" class="px-5 py-2 text-rich-black rounded-pill hover:bg-ghost-gray">Download v0.1.1 →</a>
+      <a href="https://github.com/niradler/git-skill/releases" class="px-5 py-2 text-rich-black rounded-pill hover:bg-ghost-gray">Releases →</a>
     </div>
     <div class="mt-12 max-w-[560px] mx-auto">
       <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4 text-left">
-        <div class="text-[12px] text-midtone-gray mb-2">install (macOS / Linux)</div>
-        <pre class="mono text-[13px] leading-[1.6]"><code>curl -fsSL https://github.com/niradler/git-skill/releases/download/v0.1.1/git-skill_0.1.1_linux_amd64 -o git-skill \
-  &amp;&amp; chmod +x git-skill &amp;&amp; sudo mv git-skill /usr/local/bin/</code></pre>
+        <div class="text-[12px] text-midtone-gray mb-2">install</div>
+        <pre class="mono text-[13px] leading-[1.6]"><code>go install github.com/niradler/git-skill/cmd/git-skill@latest
+
+# git auto-discovers it as a subcommand:
+git skill list</code></pre>
       </div>
     </div>
   </div>
@@ -127,18 +129,18 @@
   <div class="max-w-[1080px] mx-auto">
     <div class="max-w-[680px]">
       <div class="text-[12px] text-midtone-gray uppercase tracking-wider">Why git-skill</div>
-      <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">Skills deserve the same rigor as code.</h2>
-      <p class="mt-4 text-rich-black">A skill is a prompt + supporting files that change how an agent behaves. Today they're scattered across folders, gists, and copy-pasted snippets. There's no version, no lockfile, no way to say "every machine in our team runs <em>this exact</em> review skill at <em>this exact</em> SHA". git-skill fixes that, using only the git you already have.</p>
+      <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">Skills and agents deserve the same rigor as code.</h2>
+      <p class="mt-4 text-rich-black">An AI agent asset — a skill, a sub-agent, a prompt bundle — is a prompt plus supporting files that change how an agent behaves. Today they're scattered across folders, gists, and copy-pasted snippets. There's no version, no lockfile, no way to say "every machine in our team runs <em>this exact</em> review skill at <em>this exact</em> SHA". git-skill fixes that, using only the git you already have.</p>
     </div>
 
     <div class="mt-10 grid md:grid-cols-3 gap-4">
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="text-deep-black font-medium">git-native</div>
-        <p class="mt-2 text-rich-black">Every skill is a real git commit pointing at a real git tree under <code class="mono">refs/skills/&lt;name&gt;</code>. <code class="mono">git log</code>, <code class="mono">git diff</code>, <code class="mono">git cat-file</code> — they all just work. No new database, no central registry, no SaaS.</p>
+        <p class="mt-2 text-rich-black">Every asset is a real git commit pointing at a real git tree under <code class="mono">refs/assets/&lt;kind&gt;/&lt;name&gt;</code>. <code class="mono">git log</code>, <code class="mono">git diff</code>, <code class="mono">git cat-file</code> — they all just work. No new database, no central registry, no SaaS.</p>
       </div>
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="text-deep-black font-medium">Reproducible</div>
-        <p class="mt-2 text-rich-black"><code class="mono">skill.lock</code> pins skills to a commit SHA, not a tag. A tag can move; a SHA can't. <code class="mono">git skill sync</code> on any machine produces byte-identical files.</p>
+        <p class="mt-2 text-rich-black"><code class="mono">assets.json</code> records both the semver spec and the exact commit SHA. A tag can move; a SHA can't. <code class="mono">git skill install</code> on any machine produces byte-identical files.</p>
       </div>
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="text-deep-black font-medium">Portable</div>
@@ -148,16 +150,16 @@
 
     <div class="mt-4 grid md:grid-cols-3 gap-4">
       <div class="rounded-[14px] border border-subtle-ash p-4">
+        <div class="text-deep-black font-medium">Skills and agents</div>
+        <p class="mt-2 text-rich-black">Two kinds out of the box. Skills materialize as full directory trees; agents as a single marker file at the runtime target. The <code class="mono">Asset-Kind</code> trailer on every commit keeps the kind discoverable from the commit alone.</p>
+      </div>
+      <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="text-deep-black font-medium">Cross-platform</div>
-        <p class="mt-2 text-rich-black">Lockfile paths are repo-relative, forward-slash. Symlink targets are relative-to-parent. A <code class="mono">skill.lock</code> written on Windows works on Linux and macOS, unchanged.</p>
+        <p class="mt-2 text-rich-black">Unix uses relative symlinks; Windows falls back to junctions or copies when symlink privilege isn't available. CI runs on Linux, macOS, and Windows.</p>
       </div>
       <div class="rounded-[14px] border border-subtle-ash p-4">
-        <div class="text-deep-black font-medium">Single binary</div>
-        <p class="mt-2 text-rich-black">A ~3 MB Go executable. No runtime, no daemon, no shell rewrites. Drop in your <code class="mono">PATH</code> and <code class="mono">git skill ...</code> works as a git subcommand.</p>
-      </div>
-      <div class="rounded-[14px] border border-subtle-ash p-4">
-        <div class="text-deep-black font-medium">Agent-agnostic</div>
-        <p class="mt-2 text-rich-black">Materialises symlinks where each agent expects to read skills (<code class="mono">.claude/skills/</code>, <code class="mono">.agents/skills/</code>). Adding a new agent is a one-line change.</p>
+        <div class="text-deep-black font-medium">Runtime-agnostic</div>
+        <p class="mt-2 text-rich-black">Built-in registry covers <code class="mono">claude</code>, <code class="mono">cursor</code>, <code class="mono">codex</code>, <code class="mono">opencode</code>. Add a new runtime via <code class="mono">git-skill.yaml</code> in the asset, or via <code class="mono">.git-skill/runtimes.yaml</code> in your repo.</p>
       </div>
     </div>
   </div>
@@ -168,8 +170,8 @@
   <div class="max-w-[1080px] mx-auto">
     <div class="max-w-[680px]">
       <div class="text-[12px] text-midtone-gray uppercase tracking-wider">How it works</div>
-      <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">A skill is a git ref, not a folder.</h2>
-      <p class="mt-4 text-rich-black">Every skill lives at <code class="mono">refs/skills/&lt;name&gt;</code>, and each tagged release at <code class="mono">refs/skill-tags/&lt;name&gt;/vX.Y.Z</code>. Skills travel with the repo's regular <code class="mono">git push</code> / <code class="mono">git fetch</code> machinery — git-skill never invents a transport.</p>
+      <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">Assets are git refs, not folders.</h2>
+      <p class="mt-4 text-rich-black">Every asset lives at <code class="mono">refs/assets/&lt;kind&gt;/&lt;name&gt;</code>, and each tagged release at <code class="mono">refs/asset-tags/&lt;kind&gt;/&lt;name&gt;/vX.Y.Z</code>. Assets travel with the repo's regular <code class="mono">git push</code> / <code class="mono">git fetch</code> machinery — git-skill never invents a transport.</p>
     </div>
 
     <div class="mt-10 grid lg:grid-cols-2 gap-4">
@@ -178,10 +180,10 @@
         <div class="text-[12px] text-midtone-gray uppercase tracking-wider mb-3">Storage model</div>
         <div class="mermaid">
 graph TD
-  A["SKILL.md + files<br/>on disk"] -->|"git skill track"| B["git tree object"]
-  B -->|"git commit-tree"| C["git commit object"]
-  C -->|"git update-ref"| D["refs/skills/&lt;name&gt;<br/>(branch-like ref)"]
-  C -->|"git skill tag v1.0.0"| E["refs/skill-tags/&lt;name&gt;/v1.0.0<br/>(immutable release)"]
+  A["SKILL.md or AGENT.md<br/>+ files on disk"] -->|"git skill commit"| B["git tree object"]
+  B -->|"git commit-tree<br/>(Asset-Kind trailer)"| C["git commit object"]
+  C -->|"git update-ref"| D["refs/assets/&lt;kind&gt;/&lt;name&gt;<br/>(branch-like ref)"]
+  C -->|"git skill tag v1.0.0"| E["refs/asset-tags/&lt;kind&gt;/&lt;name&gt;/v1.0.0<br/>(immutable release)"]
   D -->|"git push origin"| F["GitHub remote"]
   E -->|"git push origin"| F
         </div>
@@ -196,37 +198,40 @@ sequenceDiagram
   participant Pr as Producer repo
   participant GH as GitHub
   participant Cr as Consumer repo
-  A->>Pr: git skill init code-review
-  A->>Pr: git skill commit -m "..."
+  A->>Pr: git skill init
+  A->>Pr: git skill commit code-review -m "..."
   A->>Pr: git skill tag code-review 1.0.0
   Pr->>GH: git skill push origin
   Note over Cr: teammate clones their app repo
-  Cr->>GH: git skill get URL code-review@1.0.0
-  GH-->>Cr: fetch refs/skill-tags/.../v1.0.0
-  Cr->>Cr: extract tree → .claude/skills/code-review/
-  Cr->>Cr: write skill.lock (pins SHA)
+  Cr->>GH: git skill add acme/code-review@^1.0.0 --from URL
+  Cr->>GH: git skill install
+  GH-->>Cr: fetch refs/asset-tags/skill/.../v1.0.0
+  Cr->>Cr: restore canonical tree
+  Cr->>Cr: fan out into .claude/skills/code-review/
+  Cr->>Cr: assets.json pins commit SHA
         </div>
       </div>
     </div>
 
-    <!-- Diagram 3: lockfile semantics -->
+    <!-- Diagram 3: assets.json semantics -->
     <div class="mt-4 rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
-      <div class="text-[12px] text-midtone-gray uppercase tracking-wider mb-3">Lockfile = reproducibility contract</div>
+      <div class="text-[12px] text-midtone-gray uppercase tracking-wider mb-3">assets.json = reproducibility contract</div>
       <div class="mermaid">
 flowchart LR
-  subgraph LF["skill.lock (committed to your app repo)"]
+  subgraph LF["assets.json (committed to your app repo)"]
     direction TB
     L1["remote: URL"]
-    L2["version: v1.0.0"]
-    L3["commit: abc123… (SHA — immutable)"]
-    L4["canonical: .claude/skills/code-review"]
-    L5["agents.cursor: .agents/skills/code-review"]
+    L2["spec: ^1.0.0  (intent)"]
+    L3["version: 1.0.0  (resolved tag)"]
+    L4["commit: abc123…  (resolved SHA — immutable)"]
+    L5["canonical: skills/acme/code-review"]
+    L6["runtimes.claude: {}"]
   end
-  T["upstream tag v1.0.0<br/>(can move)"] -. "decoupled" .-> L2
-  S["upstream commit abc123<br/>(can't move)"] ==> L3
-  L3 ==> RR["git skill sync<br/>→ identical bytes everywhere"]
+  T["upstream tag v1.0.0<br/>(can move)"] -. "decoupled" .-> L3
+  S["upstream commit abc123<br/>(can't move)"] ==> L4
+  L4 ==> RR["git skill install<br/>→ identical bytes everywhere"]
       </div>
-      <p class="mt-3 text-[13px] text-midtone-gray">If an upstream maintainer force-moves <code class="mono">v1.0.0</code> to a different commit, every machine that already ran <code class="mono">sync</code> stays on the SHA in its lockfile. You opt into the new version explicitly with <code class="mono">git skill get …@1.0.1</code>.</p>
+      <p class="mt-3 text-[13px] text-midtone-gray">If an upstream maintainer force-moves <code class="mono">v1.0.0</code> to a different commit, every machine that already ran <code class="mono">install</code> stays on the SHA in <code class="mono">assets.json</code>. You opt into the new version explicitly with <code class="mono">git skill update code-review</code>.</p>
     </div>
   </div>
 </section>
@@ -243,21 +248,21 @@ flowchart LR
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="flex items-center gap-2 mb-3">
           <span class="inline-flex items-center justify-center w-5 h-5 rounded-pill bg-deep-black text-canvas-white text-[11px] font-medium">1</span>
-          <span class="text-deep-black font-medium">Install</span>
+          <span class="text-deep-black font-medium">Install the CLI</span>
         </div>
-        <p class="text-[13px] text-midtone-gray mb-2">Grab the binary for your OS from releases, or build from source with <code class="mono">go install</code>.</p>
-<pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code># build from source
-go install github.com/niradler/git-skill/cmd/git-skill@latest</code></pre>
+        <p class="text-[13px] text-midtone-gray mb-2">Build from source with <code class="mono">go install</code>. Symlink to <code class="mono">git-agent</code> / <code class="mono">git-asset</code> to enable all three personas.</p>
+<pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>go install github.com/niradler/git-skill/cmd/git-skill@latest
+git skill list</code></pre>
       </div>
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="flex items-center gap-2 mb-3">
           <span class="inline-flex items-center justify-center w-5 h-5 rounded-pill bg-deep-black text-canvas-white text-[11px] font-medium">2</span>
           <span class="text-deep-black font-medium">Author</span>
         </div>
-        <p class="text-[13px] text-midtone-gray mb-2">Scaffold a skill, edit <code class="mono">SKILL.md</code>, snapshot it, tag a release, publish to your remote.</p>
-<pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill init code-review "PR checklist"
-# edit code-review/SKILL.md
-git skill commit code-review -m "Add checklist"
+        <p class="text-[13px] text-midtone-gray mb-2">Scaffold <code class="mono">assets.json</code>, write your <code class="mono">SKILL.md</code> under <code class="mono">skills/&lt;name&gt;/</code>, snapshot, tag, publish.</p>
+<pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill init
+$EDITOR skills/code-review/SKILL.md
+git skill commit code-review --path skills/code-review -m "v1"
 git skill tag code-review 1.0.0
 git skill push origin</code></pre>
       </div>
@@ -266,12 +271,12 @@ git skill push origin</code></pre>
           <span class="inline-flex items-center justify-center w-5 h-5 rounded-pill bg-deep-black text-canvas-white text-[11px] font-medium">3</span>
           <span class="text-deep-black font-medium">Consume</span>
         </div>
-        <p class="text-[13px] text-midtone-gray mb-2">Anywhere else, install pinned by tag, commit <code class="mono">skill.lock</code>, teammates run <code class="mono">sync</code>.</p>
-<pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill get \
-  https://github.com/you/skills.git \
-  code-review@1.0.0 \
-  .claude/skills/
-git add skill.lock &amp;&amp; git commit -m "pin"</code></pre>
+        <p class="text-[13px] text-midtone-gray mb-2">Onboard a remote asset against a semver spec, materialize, commit <code class="mono">assets.json</code>. Teammates run <code class="mono">install</code>.</p>
+<pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill init
+git skill add acme/code-review@^1.0.0 \
+    --from https://github.com/acme/skills
+git skill install
+git add assets.json &amp;&amp; git commit -m "pin"</code></pre>
       </div>
     </div>
   </div>
@@ -288,33 +293,36 @@ git add skill.lock &amp;&amp; git commit -m "pin"</code></pre>
     <div class="mt-10 grid lg:grid-cols-2 gap-4">
 
       <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
-        <div class="text-deep-black font-medium">Bump a skill across your team</div>
-        <p class="mt-2 text-rich-black">Author tags <code class="mono">1.1.0</code>; every consumer changes one line and commits the lock.</p>
+        <div class="text-deep-black font-medium">Bump an asset across your team</div>
+        <p class="mt-2 text-rich-black">Author tags <code class="mono">1.1.0</code>; every consumer runs <code class="mono">update</code> and commits the new pin.</p>
 <pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code># author
-git skill commit code-review -m "Add async-fn check"
+git skill commit code-review --path skills/code-review -m "Add async-fn check"
 git skill tag code-review 1.1.0
 git skill push origin
 
 # consumer
-git skill get URL code-review@1.1.0 .claude/skills/
-git add skill.lock &amp;&amp; git commit -m "bump code-review to v1.1.0"</code></pre>
+git skill update code-review
+git add assets.json &amp;&amp; git commit -m "bump code-review to v1.1.0"</code></pre>
       </div>
 
       <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
         <div class="text-deep-black font-medium">Reproduce a teammate's setup</div>
-        <p class="mt-2 text-rich-black">They committed <code class="mono">skill.lock</code>; you just <code class="mono">sync</code>. No tags involved — the SHA is what binds.</p>
+        <p class="mt-2 text-rich-black">They committed <code class="mono">assets.json</code>; you just <code class="mono">install</code>. No tags involved — the SHA is what binds.</p>
 <pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git clone &lt;their-app-repo&gt;
 cd &lt;their-app-repo&gt;
-git skill sync
+git skill install
 # fetching code-review from URL...
-# synced code-review → .claude/skills/code-review (abc1234)</code></pre>
+# materialized skill code-review → .claude/skills/code-review/ (abc1234)</code></pre>
       </div>
 
       <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
-        <div class="text-deep-black font-medium">Revert to a previous version</div>
-        <p class="mt-2 text-rich-black">Bad release just shipped? Re-install the old tag, commit the lockfile.</p>
-<pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill get URL code-review@1.0.0 .claude/skills/
-git add skill.lock &amp;&amp; git commit -m "revert code-review to v1.0.0"</code></pre>
+        <div class="text-deep-black font-medium">Author a sub-agent</div>
+        <p class="mt-2 text-rich-black">Use the <code class="mono">git-agent</code> persona (symlink of the same binary). Agents materialize as a single marker file at the runtime target.</p>
+<pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git agent init
+$EDITOR agents/security-auditor/AGENT.md
+git agent commit security-auditor --path agents/security-auditor -m "v1"
+git agent tag security-auditor 0.1.0
+git agent push origin</code></pre>
       </div>
 
       <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
@@ -322,8 +330,8 @@ git add skill.lock &amp;&amp; git commit -m "revert code-review to v1.0.0"</code
         <p class="mt-2 text-rich-black">Plain git diff — no special tooling needed.</p>
 <pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill diff code-review v1.0.0 v1.1.0
 # or with raw git:
-git diff refs/skill-tags/code-review/v1.0.0 \
-         refs/skill-tags/code-review/v1.1.0</code></pre>
+git diff refs/asset-tags/skill/code-review/v1.0.0 \
+         refs/asset-tags/skill/code-review/v1.1.0</code></pre>
       </div>
 
       <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
@@ -332,21 +340,23 @@ git diff refs/skill-tags/code-review/v1.0.0 \
 <pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code># once per machine
 gh auth login
 
-git skill get \
-  https://github.com/acme/private-skills.git \
-  internal-rubric@2.0.0 \
-  .claude/skills/</code></pre>
+git skill add acme/internal-rubric@2.0.0 \
+    --from https://github.com/acme/private-skills.git
+git skill install</code></pre>
       </div>
 
       <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
         <div class="text-deep-black font-medium">Use without the CLI</div>
-        <p class="mt-2 text-rich-black">Skills are plain git refs — any git-aware tool reads them natively.</p>
-<pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git cat-file -p refs/skills/code-review
+        <p class="mt-2 text-rich-black">Assets are plain git refs — any git-aware tool reads them natively.</p>
+<pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git cat-file -p refs/assets/skill/code-review
 # tree abc...
 # author Your Name &lt;you@example.com&gt;
-# Skill-Version: 1.0.0
+#
+# initial cut
+#
+# Asset-Kind: skill
 
-git ls-tree refs/skills/code-review
+git ls-tree refs/assets/skill/code-review
 # 100644 blob ...  SKILL.md</code></pre>
       </div>
     </div>
@@ -366,9 +376,9 @@ git ls-tree refs/skills/code-review
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="flex items-center gap-2">
           <span class="px-2 py-0.5 rounded-3xl bg-deep-black text-canvas-white text-[11px] font-medium">DO</span>
-          <span class="text-deep-black font-medium">Always commit <code class="mono">skill.lock</code></span>
+          <span class="text-deep-black font-medium">Always commit <code class="mono">assets.json</code></span>
         </div>
-        <p class="mt-2 text-rich-black">It's the reproducibility contract. Without it, <code class="mono">git skill sync</code> is a no-op for everyone else. Commit it alongside the code change that consumes the skill.</p>
+        <p class="mt-2 text-rich-black">It's the reproducibility contract. Without it, <code class="mono">git skill install</code> is a no-op for everyone else. Commit it alongside the code change that consumes the asset.</p>
       </div>
 
       <div class="rounded-[14px] border border-subtle-ash p-4">
@@ -382,9 +392,9 @@ git ls-tree refs/skills/code-review
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="flex items-center gap-2">
           <span class="px-2 py-0.5 rounded-3xl bg-deep-black text-canvas-white text-[11px] font-medium">DO</span>
-          <span class="text-deep-black font-medium">Treat skills like packages, not configs</span>
+          <span class="text-deep-black font-medium">Treat assets like packages, not configs</span>
         </div>
-        <p class="mt-2 text-rich-black">Semver them. Write a short changelog inside <code class="mono">SKILL.md</code> for each release. Bumping a tag without notes is the fastest way to lose your team's trust.</p>
+        <p class="mt-2 text-rich-black">Semver them. Write a short changelog inside <code class="mono">SKILL.md</code> or <code class="mono">AGENT.md</code> for each release. Bumping a tag without notes is the fastest way to lose your team's trust.</p>
       </div>
 
       <div class="rounded-[14px] border border-subtle-ash p-4">
@@ -392,15 +402,15 @@ git ls-tree refs/skills/code-review
           <span class="px-2 py-0.5 rounded-3xl bg-deep-black text-canvas-white text-[11px] font-medium">DO</span>
           <span class="text-deep-black font-medium">Use a URL for <code class="mono">remote</code></span>
         </div>
-        <p class="mt-2 text-rich-black">The <code class="mono">remote</code> field in <code class="mono">skill.lock</code> must resolve from every teammate's machine. <code class="mono">https://github.com/…</code> or <code class="mono">git@github.com:…</code> — never a local filesystem path.</p>
+        <p class="mt-2 text-rich-black">The <code class="mono">remote</code> field in <code class="mono">assets.json</code> must resolve from every teammate's machine. <code class="mono">https://github.com/…</code> or <code class="mono">git@github.com:…</code> — never a local filesystem path.</p>
       </div>
 
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="flex items-center gap-2">
           <span class="px-2 py-0.5 rounded-3xl bg-deep-black text-canvas-white text-[11px] font-medium">DO</span>
-          <span class="text-deep-black font-medium">Review third-party skills before installing</span>
+          <span class="text-deep-black font-medium">Review third-party assets before installing</span>
         </div>
-        <p class="mt-2 text-rich-black">A <code class="mono">SKILL.md</code> is read by your agent the same way <em>your</em> instructions are. <code class="mono">git skill diff</code> the new tag before upgrading; treat it like a code review.</p>
+        <p class="mt-2 text-rich-black">A <code class="mono">SKILL.md</code> or <code class="mono">AGENT.md</code> is read by your agent the same way <em>your</em> instructions are. <code class="mono">git skill diff</code> the new tag before upgrading; treat it like a code review.</p>
       </div>
 
       <div class="rounded-[14px] border border-subtle-ash p-4">
@@ -414,17 +424,17 @@ git ls-tree refs/skills/code-review
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="flex items-center gap-2">
           <span class="px-2 py-0.5 rounded-3xl bg-callout-red text-canvas-white text-[11px] font-medium">DON'T</span>
-          <span class="text-deep-black font-medium">Edit installed skill files in place</span>
+          <span class="text-deep-black font-medium">Edit installed asset files in place</span>
         </div>
-        <p class="mt-2 text-rich-black">Files in <code class="mono">.claude/skills/&lt;name&gt;</code> are a materialised copy of an upstream commit. The next <code class="mono">sync</code> overwrites them. Fork the skill or open a PR upstream instead.</p>
+        <p class="mt-2 text-rich-black">Files at <code class="mono">.claude/skills/&lt;name&gt;</code> (and other runtime targets) are a materialized view of an upstream commit. The next <code class="mono">install</code> overwrites them. Fork the asset or open a PR upstream instead.</p>
       </div>
 
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="flex items-center gap-2">
           <span class="px-2 py-0.5 rounded-3xl bg-callout-red text-canvas-white text-[11px] font-medium">DON'T</span>
-          <span class="text-deep-black font-medium">Mix skill commits with app commits</span>
+          <span class="text-deep-black font-medium">Mix asset commits with app commits</span>
         </div>
-        <p class="mt-2 text-rich-black"><code class="mono">refs/skills/*</code> are isolated from your app's <code class="mono">main</code>. Don't try to consolidate by cherry-picking between them — the disjoint history is a feature, not an accident.</p>
+        <p class="mt-2 text-rich-black"><code class="mono">refs/assets/*</code> are isolated from your app's <code class="mono">main</code>. Don't try to consolidate by cherry-picking between them — the disjoint history is a feature, not an accident.</p>
       </div>
 
     </div>
@@ -445,20 +455,20 @@ git ls-tree refs/skills/code-review
         <p class="mt-2 text-rich-black">Step-by-step walkthrough: producer repo, tags, push, consume from a teammate's app repo, private repos, CI/CD.</p>
       </a>
       <a href="https://github.com/niradler/git-skill/blob/main/SKILL-FORMAT.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
-        <div class="text-deep-black font-medium">→ SKILL-FORMAT spec</div>
-        <p class="mt-2 text-rich-black">The storage format on its own, decoupled from the CLI. Re-implement it in any language; the refs and trees are what matter.</p>
+        <div class="text-deep-black font-medium">→ Asset format spec</div>
+        <p class="mt-2 text-rich-black">The storage format on its own, decoupled from the CLI. Refs, kinds, the <code class="mono">Asset-Kind</code> trailer, and <code class="mono">assets.json</code> — re-implement in any language.</p>
       </a>
       <a href="https://github.com/niradler/git-skill/blob/main/ARCHITECTURE.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
         <div class="text-deep-black font-medium">→ Architecture</div>
-        <p class="mt-2 text-rich-black">Internal design: why refs, why a JSON lockfile, what's deliberately out of scope, where the seams live.</p>
+        <p class="mt-2 text-rich-black">Internal design: why refs, why <code class="mono">assets.json</code>, the runtime registry and override layers, what's deliberately out of scope.</p>
       </a>
       <a href="https://github.com/niradler/git-skill/blob/main/SECURITY.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
         <div class="text-deep-black font-medium">→ Security &amp; threat model</div>
-        <p class="mt-2 text-rich-black">What git-skill defends against, what it doesn't, and how to harden a consumer setup against malicious third-party skills.</p>
+        <p class="mt-2 text-rich-black">What git-skill defends against, what it doesn't, and how to harden a consumer setup against malicious third-party assets.</p>
       </a>
       <a href="https://github.com/niradler/git-skill/blob/main/CHANGELOG.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
         <div class="text-deep-black font-medium">→ Changelog</div>
-        <p class="mt-2 text-rich-black">Every release, every fix. Currently v0.1.1.</p>
+        <p class="mt-2 text-rich-black">Every release, every fix.</p>
       </a>
       <a href="https://github.com/niradler/git-skill/blob/main/CONTRIBUTING.md" class="block rounded-[14px] border border-subtle-ash p-4 hover:bg-ghost-gray">
         <div class="text-deep-black font-medium">→ Contributing</div>
@@ -474,7 +484,7 @@ git ls-tree refs/skills/code-review
     <div class="flex items-center gap-2 text-rich-black">
       <span class="inline-block w-5 h-5 rounded-[4px] bg-deep-black"></span>
       <span class="font-medium">git-skill</span>
-      <span class="text-midtone-gray">— git-native skill versioning</span>
+      <span class="text-midtone-gray">— git-native asset versioning</span>
     </div>
     <div class="flex items-center gap-3 text-[13px] text-midtone-gray">
       <a href="https://github.com/niradler/git-skill" class="hover:text-rich-black">GitHub</a>

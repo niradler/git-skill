@@ -10,7 +10,8 @@ import (
 func TestDiffShowsChangesBetweenTags(t *testing.T) {
 	dir := gitInit(t)
 	wd, _ := os.Getwd()
-	os.Chdir(dir); defer os.Chdir(wd)
+	os.Chdir(dir)
+	defer os.Chdir(wd)
 	os.MkdirAll("src", 0755)
 	os.WriteFile("src/SKILL.md", []byte("---\nname: x\n---\nv1"), 0644)
 	if err := Commit(profileSkillOnly, []string{"acme/x", "-m", "feat: v1", "--path", "src"}, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {

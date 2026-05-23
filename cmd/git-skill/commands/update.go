@@ -45,7 +45,7 @@ func Update(p Profile, args []string, stdout, stderr io.Writer) error {
 			entry.Version = resolved.Version
 			entry.Commit = resolved.Commit
 			st.Set(k, name, entry)
-			if err := installOne(cwd, st, k, name, entry, reg, stdout); err != nil {
+			if err := installOne(cwd, k, name, entry, reg, stdout); err != nil {
 				return fmt.Errorf("install %s/%s: %w", k, name, err)
 			}
 		}

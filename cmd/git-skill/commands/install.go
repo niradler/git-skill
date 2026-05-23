@@ -40,7 +40,7 @@ func Install(p Profile, args []string, stdout, stderr io.Writer) error {
 			continue
 		}
 		for name, entry := range st.Assets[k] {
-			if err := installOne(cwd, st, k, name, entry, reg, stdout); err != nil {
+			if err := installOne(cwd, k, name, entry, reg, stdout); err != nil {
 				return fmt.Errorf("install %s/%s: %w", k, name, err)
 			}
 		}
@@ -48,7 +48,7 @@ func Install(p Profile, args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-func installOne(repoRoot string, st *state.State, k kind.Kind, name string, e state.Entry, reg *runtimes.Registry, stdout io.Writer) error {
+func installOne(repoRoot string, k kind.Kind, name string, e state.Entry, reg *runtimes.Registry, stdout io.Writer) error {
 	if e.Commit == "" {
 		return fmt.Errorf("entry has no commit pin (run 'update %s/%s' first)", k, name)
 	}

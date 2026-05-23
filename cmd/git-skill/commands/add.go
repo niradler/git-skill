@@ -104,7 +104,7 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 	}
 
 	fmt.Fprintf(stdout, "+ %s %s @ %s\n", k, name, resolved.Version)
-	return installOne(cwd, st, k, name, entry, reg, stdout)
+	return installOne(cwd, k, name, entry, reg, stdout)
 }
 
 // buildRuntimes merges the --runtime list and the --target overrides into

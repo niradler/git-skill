@@ -674,3 +674,62 @@ func TestRemove_CleansUpManifestOnlyRuntime(t *testing.T) {
 		t.Errorf("canonical tree should be removed, got err=%v", err)
 	}
 }
+
+// Remove must also clean up runtimes that exist only because a
+// project-level .git-skill/runtimes.yaml declared them. The cleanup
+// path runs reg.Resolve(rt, k, name) — which already sees the project
+// config — so the test pins the behavior: an entry whose runtime is
+// not in the built-in registry but IS in the project config gets its
+// fan-out path removed.
+func TestRemove_CleansUpProjectConfigRuntime(t *testing.T) {
+	t.Setenv("GIT_SKILL_USER_CONFIG", filepath.Join(t.TempDir(), "no-user-config.yaml"))
+
+	upstream, commit := makeUpstreamSkill(t, "acme/x")
+
+	consumer := t.TempDir()
+	wd, _ := os.Getwd()
+	os.Chdir(consumer)
+	defer os.Chdir(wd)
+	exec.Command("git", "init", "-q").Run()
+	exec.Command("git", "config", "core.autocrlf", "false").Run()
+
+	if err := os.MkdirAll(".git-skill", 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(".git-skill", "runtimes.yaml"), []byte(`runtimes:
+  myfuture:
+    skill:
+      to: .myfuture/skills/<name>/
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	st := state.New()
+	st.Set(kind.Skill, "acme/x", state.Entry{
+		Spec:      "v1.0.0",
+		Remote:    upstream,
+		Runtimes:  map[string]state.RuntimeOverride{"myfuture": {}},
+		Version:   "v1.0.0",
+		Commit:    commit,
+		Canonical: "skills/acme/x",
+	})
+	if err := st.Write(consumer); err != nil {
+		t.Fatal(err)
+	}
+	if err := Install(profileSkillOnly, nil, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if _, err := os.Stat(".myfuture/skills/acme/x/SKILL.md"); err != nil {
+		t.Fatalf("precondition: install should materialize project-config path: %v", err)
+	}
+
+	if err := Remove(profileSkillOnly, []string{"acme/x"}, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+	if _, err := os.Stat(".myfuture/skills/acme/x"); !os.IsNotExist(err) {
+		t.Errorf("project-config fan-out path should be removed, got err=%v", err)
+	}
+	if _, err := os.Stat("skills/acme/x"); !os.IsNotExist(err) {
+		t.Errorf("canonical tree should be removed, got err=%v", err)
+	}
+}

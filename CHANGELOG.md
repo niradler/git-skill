@@ -19,7 +19,7 @@ All notable changes to git-skill are documented here. Format follows [Keep a Cha
 - **`.assetignore`** — gitignore-style filter applied during copy materialization (dev-mode symlinks see the full tree).
 - **Built-in runtime registry** — `claude`, `cursor`, `codex`, `opencode`. Each entry is now a `{from, to}` mapping; trailing `/` on `to` means directory fanout, no slash means single-file. Adds `codex:agent` default (`agent.toml` → `.codex/agents/<name>.toml`).
 - **`--target <runtime>=<path>`** flag on `git skill add` — override the install target for a runtime; the override is persisted into `assets.json`.
-- **`git-skill.yaml` asset manifest** — optional file at the root of a canonical asset tree. Authors can declare per-runtime `from`/`to` overrides without forcing consumers to set `--target`, or extend `git-skill` to new runtimes not in the built-in registry. Resolution precedence (low → high): registry < manifest < lock entry override. `<name>` placeholders are substituted in both `from` and `to`.
+- **`git-skill.yaml` asset manifest** — optional file at the root of a canonical asset tree. Authors can declare per-runtime `from`/`to` overrides without forcing consumers to set `--target`, or extend `git-skill` to new runtimes not in the built-in registry. `<name>` placeholders are substituted in both `from` and `to`. See the full precedence chain in the next bullet.
 - **User/project `runtimes.yaml`** — optional config at `~/.config/git-skill/runtimes.yaml` (user-global) and/or `<repo>/.git-skill/runtimes.yaml` (project-local, committable). Schema mirrors the built-in registry: `runtimes.<name>.<skill|agent>.{from,to}`. Adds new runtimes or overrides built-in mappings without touching individual assets. Full precedence chain (low → high): built-in registry < user config < project config < asset manifest < lock entry override. `GIT_SKILL_USER_CONFIG` env var overrides the user-config path (intended for tests).
 - **Dev mode** — `e.Dev == true` preserves local edits to the canonical tree on re-install. Non-dev installs always refresh from the pinned commit.
 - **Release E2E suite** (`test/e2e/release/`) — 16 tests covering flows, contracts, platform, errors, and idempotency on a real git repo.
@@ -29,6 +29,10 @@ All notable changes to git-skill are documented here. Format follows [Keep a Cha
 - **State file** — `skill.lock` is gone; consumers use `assets.json`.
 - **Indexer (SkillHub)** — now indexes both kinds from `refs/assets/<kind>/<name>` and tag refs under `refs/asset-tags/<kind>/<name>/v…`.
 - **`assets.json` `runtimes` field** — was `["claude", "codex"]` (list of names); now an object `{"claude": {}, "codex": {"to": ".custom/<name>/"}}`. Each value is a per-runtime override (`from`, `to`); empty `{}` means "use the registry default". The legacy `[]string` form is explicitly rejected with a clear error.
+
+### Dependencies
+- Added `gopkg.in/yaml.v3` to parse `git-skill.yaml` asset manifests and `runtimes.yaml` configs.
+- Added `golang.org/x/sys` to call the Windows symlink/junction APIs required by the cross-platform materializer in `internal/fs/`.
 
 ### Removed
 - `git skill track` — superseded by the `init` + author-under-`skills/<name>/` or `agents/<name>/` + `commit --path` flow.

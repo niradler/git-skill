@@ -61,10 +61,10 @@ func TestResolve_Precedence(t *testing.T) {
 			wantTier: "lock",
 		},
 		{
-			name:     "trailer wins when no lock",
-			sources:  Sources{Trailer: Agent, Frontmatter: Skill, Filename: Skill},
-			want:     Agent,
-			wantTier: "trailer",
+			name:           "trailer wins when no lock",
+			sources:        Sources{Trailer: Agent, Frontmatter: Skill, Filename: Skill},
+			want:           Agent,
+			wantTier:       "trailer",
 			wantWarnSubstr: "trailer disagrees with frontmatter",
 		},
 		{

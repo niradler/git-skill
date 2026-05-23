@@ -3,9 +3,9 @@
 // asset authors declare per-runtime From/To overrides on top of the
 // built-in registry, without forcing every consumer to set --target.
 //
-// Resolution precedence (lowest → highest): built-in registry < project
-// runtimes.yaml (Phase C) < user runtimes.yaml (Phase C) < asset manifest
-// < lock entry override.
+// Resolution precedence (lowest → highest): built-in registry < user
+// runtimes.yaml < project runtimes.yaml < asset manifest < lock entry
+// override.
 //
 // Note: manifest values support "<name>" placeholder substitution in
 // both `from` and `to`. The built-in registry only substitutes in `to`;

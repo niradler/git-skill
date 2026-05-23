@@ -174,7 +174,7 @@ runtimes:
     to: .custom-tool/<name>/
 ```
 
-Resolution precedence (low → high): registry < manifest < lock entry override. `<name>` placeholders are substituted in both `from` and `to`.
+`<name>` placeholders are substituted in both `from` and `to`. See [Resolution precedence](#resolution-precedence) below for where the manifest sits in the full chain.
 
 ### User/project runtimes config
 
@@ -196,6 +196,8 @@ runtimes:
     skill:
       to: .alt/claude/<name>/
 ```
+
+### Resolution precedence
 
 Full precedence chain (low → high): built-in registry < user config < project config < asset manifest < lock entry override.
 

@@ -150,4 +150,3 @@ func removeExisting(path string) error {
 	}
 	return os.Remove(path)
 }
-
