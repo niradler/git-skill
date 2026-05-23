@@ -513,6 +513,121 @@ func TestInstall_ManifestOnlyRuntimeMissingToFails(t *testing.T) {
 	}
 }
 
+// Project-level .git-skill/runtimes.yaml can declare a brand-new
+// runtime; the lock entry references it; Install materializes it at
+// the configured path. This proves the user/project config layer is
+// merged into the registry the install path consults.
+func TestInstall_ProjectRuntimesConfigAddsRuntime(t *testing.T) {
+	t.Setenv("GIT_SKILL_USER_CONFIG", filepath.Join(t.TempDir(), "no-user-config.yaml"))
+
+	upstream, commit := makeUpstreamSkill(t, "acme/x")
+
+	consumer := t.TempDir()
+	wd, _ := os.Getwd()
+	os.Chdir(consumer)
+	defer os.Chdir(wd)
+	exec.Command("git", "init", "-q").Run()
+	exec.Command("git", "config", "core.autocrlf", "false").Run()
+
+	if err := os.MkdirAll(".git-skill", 0755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := `runtimes:
+  myfuture:
+    skill:
+      to: .myfuture/skills/<name>/
+`
+	if err := os.WriteFile(filepath.Join(".git-skill", "runtimes.yaml"), []byte(cfg), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	st := state.New()
+	st.Set(kind.Skill, "acme/x", state.Entry{
+		Spec:      "v1.0.0",
+		Remote:    upstream,
+		Runtimes:  map[string]state.RuntimeOverride{"myfuture": {}},
+		Version:   "v1.0.0",
+		Commit:    commit,
+		Canonical: "skills/acme/x",
+	})
+	if err := st.Write(consumer); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Install(profileSkillOnly, nil, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if _, err := os.Stat(".myfuture/skills/acme/x/SKILL.md"); err != nil {
+		t.Errorf("project-config runtime path not materialized: %v", err)
+	}
+}
+
+// Precedence chain end-to-end: built-in registry < user runtimes.yaml
+// < project runtimes.yaml < manifest < lock override. All four layers
+// declare a different `to` for the same (runtime, kind); the lock
+// override must win.
+func TestInstall_FullPrecedenceChain(t *testing.T) {
+	userDir := t.TempDir()
+	userCfg := filepath.Join(userDir, "runtimes.yaml")
+	if err := os.WriteFile(userCfg, []byte(`runtimes:
+  claude:
+    skill:
+      to: .user/<name>/
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_SKILL_USER_CONFIG", userCfg)
+
+	upstream, commit := makeUpstreamSkillFiles(t, "acme/x", map[string]string{
+		"SKILL.md":        "---\nname: acme/x\n---\n# acme/x",
+		manifest.Filename: "runtimes:\n  claude:\n    to: .manifest/<name>/\n",
+	})
+
+	consumer := t.TempDir()
+	wd, _ := os.Getwd()
+	os.Chdir(consumer)
+	defer os.Chdir(wd)
+	exec.Command("git", "init", "-q").Run()
+	exec.Command("git", "config", "core.autocrlf", "false").Run()
+
+	if err := os.MkdirAll(".git-skill", 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(".git-skill", "runtimes.yaml"), []byte(`runtimes:
+  claude:
+    skill:
+      to: .project/<name>/
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	st := state.New()
+	st.Set(kind.Skill, "acme/x", state.Entry{
+		Spec:      "v1.0.0",
+		Remote:    upstream,
+		Runtimes:  map[string]state.RuntimeOverride{"claude": {To: ".lock/<name>/"}},
+		Version:   "v1.0.0",
+		Commit:    commit,
+		Canonical: "skills/acme/x",
+	})
+	if err := st.Write(consumer); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Install(profileSkillOnly, nil, &bytes.Buffer{}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+
+	if _, err := os.Stat(".lock/acme/x/SKILL.md"); err != nil {
+		t.Errorf("lock override should win: %v", err)
+	}
+	for _, dead := range []string{".user", ".project", ".manifest", ".claude"} {
+		if _, err := os.Stat(filepath.Join(dead, "acme", "x", "SKILL.md")); err == nil {
+			t.Errorf("%s/acme/x/SKILL.md should not exist when lock override wins", dead)
+		}
+	}
+}
+
 // Remove must clean up manifest-only fan-out paths. This proves the
 // load-before-delete ordering in remove.go: the manifest is read while
 // the canonical tree still exists, so the cleanup loop knows where

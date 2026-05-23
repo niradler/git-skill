@@ -7,6 +7,7 @@ import (
 
 	"github.com/niradler/git-skill/internal/gitops"
 	"github.com/niradler/git-skill/internal/kind"
+	"github.com/niradler/git-skill/internal/runtimes"
 	"github.com/niradler/git-skill/internal/state"
 )
 
@@ -18,6 +19,10 @@ func Update(p Profile, args []string, stdout, stderr io.Writer) error {
 	st, err := state.Read(cwd)
 	if err != nil {
 		return err
+	}
+	reg, err := runtimes.LoadRegistry(cwd)
+	if err != nil {
+		return fmt.Errorf("load runtimes config: %w", err)
 	}
 	want := stringSet(args)
 
@@ -40,7 +45,7 @@ func Update(p Profile, args []string, stdout, stderr io.Writer) error {
 			entry.Version = resolved.Version
 			entry.Commit = resolved.Commit
 			st.Set(k, name, entry)
-			if err := installOne(cwd, st, k, name, entry, stdout); err != nil {
+			if err := installOne(cwd, st, k, name, entry, reg, stdout); err != nil {
 				return fmt.Errorf("install %s/%s: %w", k, name, err)
 			}
 		}

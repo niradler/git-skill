@@ -176,6 +176,29 @@ runtimes:
 
 Resolution precedence (low → high): registry < manifest < lock entry override. `<name>` placeholders are substituted in both `from` and `to`.
 
+### User/project runtimes config
+
+Two optional config files extend or override the built-in registry without touching individual assets:
+
+- **`~/.config/git-skill/runtimes.yaml`** — user-global. Override with `$GIT_SKILL_USER_CONFIG` (intended for tests).
+- **`<repo>/.git-skill/runtimes.yaml`** — project-local, committable.
+
+```yaml
+# .git-skill/runtimes.yaml
+runtimes:
+  myfuture:
+    skill:
+      to: .myfuture/skills/<name>/
+    agent:
+      from: AGENT.md
+      to: .myfuture/agents/<name>.md
+  claude:                          # also fine: override a built-in
+    skill:
+      to: .alt/claude/<name>/
+```
+
+Full precedence chain (low → high): built-in registry < user config < project config < asset manifest < lock entry override.
+
 Canonical trees live at `skills/<name>/` and `agents/<name>/` by default (configurable via `config.skillsRoot` / `config.agentsRoot` in `assets.json`). PRs to add new runtimes are welcome; see [`internal/runtimes/registry.go`](./internal/runtimes/registry.go).
 
 ## Commands

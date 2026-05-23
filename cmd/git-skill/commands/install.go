@@ -31,12 +31,16 @@ func Install(p Profile, args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("read %s: %w", state.Filename, err)
 	}
+	reg, err := runtimes.LoadRegistry(cwd)
+	if err != nil {
+		return fmt.Errorf("load runtimes config: %w", err)
+	}
 	for _, k := range kind.All() {
 		if p.RequireKind && k != p.DefaultKind {
 			continue
 		}
 		for name, entry := range st.Assets[k] {
-			if err := installOne(cwd, st, k, name, entry, stdout); err != nil {
+			if err := installOne(cwd, st, k, name, entry, reg, stdout); err != nil {
 				return fmt.Errorf("install %s/%s: %w", k, name, err)
 			}
 		}
@@ -44,7 +48,7 @@ func Install(p Profile, args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-func installOne(repoRoot string, st *state.State, k kind.Kind, name string, e state.Entry, stdout io.Writer) error {
+func installOne(repoRoot string, st *state.State, k kind.Kind, name string, e state.Entry, reg *runtimes.Registry, stdout io.Writer) error {
 	if e.Commit == "" {
 		return fmt.Errorf("entry has no commit pin (run 'update %s/%s' first)", k, name)
 	}
@@ -85,7 +89,7 @@ func installOne(repoRoot string, st *state.State, k kind.Kind, name string, e st
 	// Iterate in deterministic order so logs and side effects are stable.
 	for _, rt := range sortedRuntimes(e.Runtimes) {
 		override := e.Runtimes[rt]
-		mapping, err := resolveMapping(rt, k, name, mf, override)
+		mapping, err := resolveMapping(reg, rt, k, name, mf, override)
 		if err != nil {
 			return err
 		}
@@ -98,19 +102,21 @@ func installOne(repoRoot string, st *state.State, k kind.Kind, name string, e st
 }
 
 // resolveMapping returns the effective Mapping for a runtime by layering,
-// from lowest to highest precedence: registry default → asset manifest
+// from lowest to highest precedence: built-in registry → user/project
+// runtimes.yaml (already merged into reg) → asset manifest
 // (git-skill.yaml) → lock entry override (assets.json runtimes.<name>).
 //
-// If the runtime is not in the built-in registry, the manifest must
-// declare at least a To for that runtime; otherwise resolution fails
-// with the registry's "unknown runtime" error. An empty From defaults
-// to "." (the whole canonical tree), matching the registry convention.
+// "Manifest-only" runtime: declared in neither the built-in registry
+// nor the user/project runtimes.yaml. In that case the asset manifest
+// must supply at least a To; an empty From defaults to "." (the whole
+// canonical tree), matching registry convention. If no source declares
+// the runtime, resolution fails with reg's "unknown runtime" error.
 //
 // "<name>" placeholders in override values are substituted with name
 // to match registry behavior, so consumers can write paths like
 // ".custom/<name>/" in --target or assets.json.
-func resolveMapping(rt string, k kind.Kind, name string, mf *manifest.Manifest, override state.RuntimeOverride) (runtimes.Mapping, error) {
-	base, regErr := runtimes.Resolve(rt, k, name)
+func resolveMapping(reg *runtimes.Registry, rt string, k kind.Kind, name string, mf *manifest.Manifest, override state.RuntimeOverride) (runtimes.Mapping, error) {
+	base, regErr := reg.Resolve(rt, k, name)
 	if regErr != nil {
 		mapping, ok := mf.Mapping(rt, name)
 		if !ok {

@@ -19,6 +19,7 @@ package runtimes
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 
@@ -54,9 +55,13 @@ var registry = map[string]map[kind.Kind]Mapping{
 // "<name>" placeholder substituted. The From field is returned verbatim
 // (no placeholder expansion in v1).
 func Resolve(runtime string, k kind.Kind, asset string) (Mapping, error) {
-	entry, ok := registry[runtime]
+	return resolveIn(registry, runtime, k, asset)
+}
+
+func resolveIn(table map[string]map[kind.Kind]Mapping, runtime string, k kind.Kind, asset string) (Mapping, error) {
+	entry, ok := table[runtime]
 	if !ok {
-		return Mapping{}, fmt.Errorf("unknown runtime %q (known: %s)", runtime, strings.Join(Known(), ", "))
+		return Mapping{}, fmt.Errorf("unknown runtime %q (known: %s)", runtime, strings.Join(knownIn(table), ", "))
 	}
 	tpl, ok := entry[k]
 	if !ok {
@@ -68,13 +73,93 @@ func Resolve(runtime string, k kind.Kind, asset string) (Mapping, error) {
 	}, nil
 }
 
-func Known() []string {
-	names := make([]string, 0, len(registry))
-	for n := range registry {
+func Known() []string { return knownIn(registry) }
+
+func knownIn(table map[string]map[kind.Kind]Mapping) []string {
+	names := make([]string, 0, len(table))
+	for n := range table {
 		names = append(names, n)
 	}
 	sort.Strings(names)
 	return names
+}
+
+// Registry is a layered view of the built-in mappings plus optional
+// user (~/.config/git-skill/runtimes.yaml) and project
+// (<repoRoot>/.git-skill/runtimes.yaml) configs. Build one with
+// LoadRegistry; use Resolve to look up a (runtime, kind) pair just like
+// the package-level Resolve.
+type Registry struct {
+	table map[string]map[kind.Kind]Mapping
+}
+
+// LoadRegistry returns the built-in registry deep-merged with the user
+// runtimes.yaml (lower precedence) and the project runtimes.yaml
+// (higher precedence). Missing files are silently skipped. A malformed
+// file surfaces as an error so the user sees the problem instead of
+// silently falling back to the built-in defaults.
+func LoadRegistry(repoRoot string) (*Registry, error) {
+	r := &Registry{table: cloneTable(registry)}
+	if p := userConfigPath(); p != "" {
+		c, err := LoadConfig(p)
+		if err != nil {
+			return nil, err
+		}
+		r.merge(c)
+	}
+	if p := projectConfigPath(repoRoot); p != "" {
+		c, err := LoadConfig(p)
+		if err != nil {
+			return nil, err
+		}
+		r.merge(c)
+	}
+	return r, nil
+}
+
+// Resolve mirrors the package-level Resolve but consults the layered
+// table on the receiver.
+func (r *Registry) Resolve(runtime string, k kind.Kind, asset string) (Mapping, error) {
+	return resolveIn(r.table, runtime, k, asset)
+}
+
+// Known returns the sorted list of runtime names in the layered registry.
+func (r *Registry) Known() []string { return knownIn(r.table) }
+
+// merge applies c on top of the receiver. Adds new runtimes/kinds and
+// overrides existing entries field-by-field: a set From/To wins, an
+// empty one preserves the existing value. The receiver's table is
+// mutated in place.
+func (r *Registry) merge(c *Config) {
+	if c == nil {
+		return
+	}
+	for rt, kinds := range c.Runtimes {
+		if r.table[rt] == nil {
+			r.table[rt] = map[kind.Kind]Mapping{}
+		}
+		for ks, m := range kinds {
+			k, _ := kind.Parse(ks) // LoadConfig has already validated this
+			existing := r.table[rt][k]
+			if m.From != "" {
+				existing.From = m.From
+			}
+			if m.To != "" {
+				existing.To = m.To
+			}
+			r.table[rt][k] = existing
+		}
+	}
+}
+
+func cloneTable(src map[string]map[kind.Kind]Mapping) map[string]map[kind.Kind]Mapping {
+	out := make(map[string]map[kind.Kind]Mapping, len(src))
+	for rt, kinds := range src {
+		inner := make(map[kind.Kind]Mapping, len(kinds))
+		maps.Copy(inner, kinds)
+		out[rt] = inner
+	}
+	return out
 }
 
 // GitignoreLines returns the set of destination prefixes (the directory

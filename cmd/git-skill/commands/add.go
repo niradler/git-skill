@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/niradler/git-skill/internal/gitops"
+	"github.com/niradler/git-skill/internal/runtimes"
 	"github.com/niradler/git-skill/internal/state"
 )
 
@@ -81,6 +82,13 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 		}
 	}
 
+	// Load registry config BEFORE mutating the lock file so a malformed
+	// runtimes.yaml fails fast and leaves no half-applied add behind.
+	reg, err := runtimes.LoadRegistry(cwd)
+	if err != nil {
+		return fmt.Errorf("load runtimes config: %w", err)
+	}
+
 	entry := state.Entry{
 		Spec:      specForState,
 		Remote:    *remote,
@@ -96,7 +104,7 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 	}
 
 	fmt.Fprintf(stdout, "+ %s %s @ %s\n", k, name, resolved.Version)
-	return installOne(cwd, st, k, name, entry, stdout)
+	return installOne(cwd, st, k, name, entry, reg, stdout)
 }
 
 // buildRuntimes merges the --runtime list and the --target overrides into

@@ -37,6 +37,10 @@ func Remove(p Profile, args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
+	reg, err := runtimes.LoadRegistry(cwd)
+	if err != nil {
+		return fmt.Errorf("load runtimes config: %w", err)
+	}
 	entry, ok := st.Get(k, name)
 	if !ok {
 		return fmt.Errorf("%s/%s not in %s", k, name, state.Filename)
@@ -51,7 +55,7 @@ func Remove(p Profile, args []string, stdout, stderr io.Writer) error {
 		return fmt.Errorf("remove canonical: %w", err)
 	}
 	for rt, override := range entry.Runtimes {
-		mapping, regErr := runtimes.Resolve(rt, k, name)
+		mapping, regErr := reg.Resolve(rt, k, name)
 		if regErr != nil {
 			if mf == nil {
 				continue
