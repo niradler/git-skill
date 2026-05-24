@@ -4,6 +4,10 @@ All notable changes to git-skill are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-25
+
+Breaking refactor from the skill-only `refs/skills/<name>` format to the unified `refs/assets/<kind>/<name>` format covering both skills and agents. State moves from `skill.lock` to `assets.json`. The `track`, `get`, and `sync` commands are removed; their behavior is folded into `init` / `add` / `install`. Existing v0.1.x consumers must re-add their skills against the new producer.
+
 ### Added
 - **Assets format**: unified storage for both **skills** and **agents** under `refs/assets/<kind>/<name>` (was `refs/skills/<name>`).
 - **Three CLI personas** via argv[0] dispatch: `git-skill`, `git-agent`, `git-asset` share one binary. The invocation name sets the default kind.
