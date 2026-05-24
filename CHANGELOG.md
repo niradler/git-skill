@@ -4,6 +4,10 @@ All notable changes to git-skill are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Fixed
+
+- `assets.json` `canonical` field is now always written with forward slashes, regardless of host OS. v0.2.0 on Windows wrote OS-native separators (`skills\<name>`), producing lock files that diffed against the same file written on macOS/Linux. The write path also normalizes existing backslash-bearing values, so lock files self-heal on the next save.
+
 ## [0.2.0] - 2026-05-25
 
 Breaking refactor from the skill-only `refs/skills/<name>` format to the unified `refs/assets/<kind>/<name>` format covering both skills and agents. State moves from `skill.lock` to `assets.json`. The `track`, `get`, and `sync` commands are removed; their behavior is folded into `init` / `add` / `install`. Existing v0.1.x consumers must re-add their skills against the new producer.

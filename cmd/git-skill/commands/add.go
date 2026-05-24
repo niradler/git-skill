@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/niradler/git-skill/internal/gitops"
@@ -72,7 +72,10 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	canonical := filepath.Join(st.Root(k), name)
+	// Use path.Join (forward slashes) so the lock file is byte-identical
+	// across Windows, macOS, and Linux. filepath.Join would emit OS-native
+	// separators and produce a non-portable assets.json on Windows.
+	canonical := path.Join(st.Root(k), name)
 	specForState := spec
 	if specForState == "" {
 		if resolved.Version != "" {
