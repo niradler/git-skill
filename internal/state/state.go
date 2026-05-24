@@ -186,16 +186,13 @@ func (s *State) Write(repoRoot string) error {
 		ws := map[string]writeShape{}
 		for name, e := range em {
 			ws[name] = writeShape{
-				Spec:     e.Spec,
-				Remote:   e.Remote,
-				Runtimes: e.Runtimes,
-				Requires: e.Requires,
-				Dev:      e.Dev,
-				Version:  e.Version,
-				Commit:   e.Commit,
-				// Lock-file paths are repo-relative posix-style so the file
-				// is byte-identical across OSes. Existing lock files written
-				// by older releases on Windows (with '\\') self-heal here.
+				Spec:      e.Spec,
+				Remote:    e.Remote,
+				Runtimes:  e.Runtimes,
+				Requires:  e.Requires,
+				Dev:       e.Dev,
+				Version:   e.Version,
+				Commit:    e.Commit,
 				Canonical: strings.ReplaceAll(e.Canonical, `\`, "/"),
 			}
 		}

@@ -72,9 +72,6 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	// Use path.Join (forward slashes) so the lock file is byte-identical
-	// across Windows, macOS, and Linux. filepath.Join would emit OS-native
-	// separators and produce a non-portable assets.json on Windows.
 	canonical := path.Join(st.Root(k), name)
 	specForState := spec
 	if specForState == "" {
@@ -85,8 +82,6 @@ func Add(p Profile, args []string, stdout, stderr io.Writer) error {
 		}
 	}
 
-	// Load registry config BEFORE mutating the lock file so a malformed
-	// runtimes.yaml fails fast and leaves no half-applied add behind.
 	reg, err := runtimes.LoadRegistry(cwd)
 	if err != nil {
 		return fmt.Errorf("load runtimes config: %w", err)
