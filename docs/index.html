@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>git-skill - git-native asset versioning for skills and agents</title>
-<meta name="description" content="git-skill stores AI agent skills and agents as git tree objects under refs/assets/&lt;kind&gt;/&lt;name&gt;, versions them with git tags, and pins exact commits in assets.json for reproducible installs across teams." />
+<title>git-skill - a package manager for AI skills and agents</title>
+<meta name="description" content="git-skill is a package manager for AI agent skills and sub-agents. Skills and agents are packages, GitHub is the registry, git-skill is the client. Semver tags, a lockfile, and reproducible installs across your team." />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -103,10 +103,10 @@
       asset format - skills and agents, one binary
     </div>
     <h1 class="text-[48px] leading-[1] tracking-[-2.4px] font-semibold text-deep-black">
-      Skills and agents as git objects.
+      A package manager for AI skills and agents.
     </h1>
     <p class="mt-6 text-[18px] leading-[1.33] tracking-[-0.45px] text-rich-black max-w-[640px] mx-auto">
-      git-skill stores AI agent assets - skills and agents - under <code class="mono">refs/assets/&lt;kind&gt;/&lt;name&gt;</code>, versioned with tags, distributed with any git remote, pinned by exact commit SHA in <code class="mono">assets.json</code> for reproducible installs across your team.
+      Skills and sub-agents are packages. GitHub is the registry. git-skill is the client. Semver tags, a lockfile, one command to install, one file to track what's pinned across your team.
     </p>
     <div class="mt-10 flex flex-wrap items-center justify-center gap-2">
       <a href="#quick-start" class="px-12 py-2 bg-deep-black text-canvas-white rounded-[10px] hover:opacity-90 font-medium">Quick start</a>
@@ -115,10 +115,12 @@
     <div class="mt-12 max-w-[560px] mx-auto">
       <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4 text-left">
         <div class="text-[12px] text-midtone-gray mb-2">install</div>
-        <pre class="mono text-[13px] leading-[1.6]"><code>go install github.com/niradler/git-skill/cmd/git-skill@latest
+        <pre class="mono text-[13px] leading-[1.6]"><code>go install github.com/niradler/git-skill/cmd/git-skill@v0.2.0
 
 # git auto-discovers it as a subcommand:
-git skill list</code></pre>
+git skill add code-review@v0.1.0 \
+    --from https://github.com/niradler/git-skill-demos \
+    --runtime claude</code></pre>
       </div>
     </div>
   </div>
@@ -130,13 +132,13 @@ git skill list</code></pre>
     <div class="max-w-[680px]">
       <div class="text-[12px] text-midtone-gray uppercase tracking-wider">Why git-skill</div>
       <h2 class="mt-2 text-[28px] leading-[1.1] tracking-[-1px] font-semibold text-deep-black">Skills and agents deserve the same rigor as code.</h2>
-      <p class="mt-4 text-rich-black">An AI agent asset - a skill, a sub-agent, a prompt bundle - is a prompt plus supporting files that change how an agent behaves. Today they're scattered across folders, gists, and copy-pasted snippets. There's no version, no lockfile, no way to say "every machine in our team runs <em>this exact</em> review skill at <em>this exact</em> SHA". git-skill fixes that, using only the git you already have.</p>
+      <p class="mt-4 text-rich-black">Every language ecosystem solved this years ago with a package manager backed by a registry. npm for JavaScript, cargo for Rust, pip for Python. AI skills and sub-agents already live on GitHub; what's been missing is the client. git-skill is that client: skills and sub-agents are packages, GitHub is the registry, and a lockfile pins every machine in your team to the exact same commit.</p>
     </div>
 
     <div class="mt-10 grid md:grid-cols-3 gap-4">
       <div class="rounded-[14px] border border-subtle-ash p-4">
-        <div class="text-deep-black font-medium">git-native</div>
-        <p class="mt-2 text-rich-black">Every asset is a real git commit pointing at a real git tree under <code class="mono">refs/assets/&lt;kind&gt;/&lt;name&gt;</code>. <code class="mono">git log</code>, <code class="mono">git diff</code>, <code class="mono">git cat-file</code> - they all just work. No new database, no central registry, no SaaS.</p>
+        <div class="text-deep-black font-medium">GitHub is the registry</div>
+        <p class="mt-2 text-rich-black">No new database, no SaaS, no hosted index to trust. Every asset is a git commit on a real git tree under <code class="mono">refs/assets/&lt;kind&gt;/&lt;name&gt;</code>. Any git remote that accepts custom refs - GitHub, GitLab, a bare repo on a USB stick - is a registry.</p>
       </div>
       <div class="rounded-[14px] border border-subtle-ash p-4">
         <div class="text-deep-black font-medium">Reproducible</div>
@@ -203,7 +205,7 @@ sequenceDiagram
   A->>Pr: git skill tag code-review 1.0.0
   Pr->>GH: git skill push origin
   Note over Cr: teammate clones their app repo
-  Cr->>GH: git skill add acme/code-review@^1.0.0 --from URL
+  Cr->>GH: git skill add code-review@v1.0.0 --from URL
   Cr->>GH: git skill install
   GH-->>Cr: fetch refs/asset-tags/skill/.../v1.0.0
   Cr->>Cr: restore canonical tree
@@ -224,7 +226,7 @@ flowchart LR
     L2["spec: ^1.0.0  (intent)"]
     L3["version: 1.0.0  (resolved tag)"]
     L4["commit: abc123...  (resolved SHA - immutable)"]
-    L5["canonical: skills/acme/code-review"]
+    L5["canonical: skills/code-review"]
     L6["runtimes.claude: {}"]
   end
   T["upstream tag v1.0.0<br/>(can move)"] -. "decoupled" .-> L3
@@ -251,7 +253,7 @@ flowchart LR
           <span class="text-deep-black font-medium">Install the CLI</span>
         </div>
         <p class="text-[13px] text-midtone-gray mb-2">Build from source with <code class="mono">go install</code>. Symlink to <code class="mono">git-agent</code> / <code class="mono">git-asset</code> to enable all three personas.</p>
-<pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>go install github.com/niradler/git-skill/cmd/git-skill@latest
+<pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>go install github.com/niradler/git-skill/cmd/git-skill@v0.2.0
 git skill list</code></pre>
       </div>
       <div class="rounded-[14px] border border-subtle-ash p-4">
@@ -263,7 +265,7 @@ git skill list</code></pre>
 <pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill init
 $EDITOR skills/code-review/SKILL.md
 git skill commit code-review --path skills/code-review -m "v1"
-git skill tag code-review 1.0.0
+git skill tag code-review v1.0.0
 git skill push origin</code></pre>
       </div>
       <div class="rounded-[14px] border border-subtle-ash p-4">
@@ -273,8 +275,9 @@ git skill push origin</code></pre>
         </div>
         <p class="text-[13px] text-midtone-gray mb-2">Onboard a remote asset against a semver spec, materialize, commit <code class="mono">assets.json</code>. Teammates run <code class="mono">install</code>.</p>
 <pre class="mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git skill init
-git skill add acme/code-review@^1.0.0 \
-    --from https://github.com/acme/skills
+git skill add code-review@v0.1.0 \
+    --from https://github.com/niradler/git-skill-demos \
+    --runtime claude
 git skill install
 git add assets.json &amp;&amp; git commit -m "pin"</code></pre>
       </div>
@@ -297,7 +300,7 @@ git add assets.json &amp;&amp; git commit -m "pin"</code></pre>
         <p class="mt-2 text-rich-black">Author tags <code class="mono">1.1.0</code>; every consumer runs <code class="mono">update</code> and commits the new pin.</p>
 <pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code># author
 git skill commit code-review --path skills/code-review -m "Add async-fn check"
-git skill tag code-review 1.1.0
+git skill tag code-review v1.1.0
 git skill push origin
 
 # consumer
@@ -321,7 +324,7 @@ git skill install
 <pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>git agent init
 $EDITOR agents/security-auditor/AGENT.md
 git agent commit security-auditor --path agents/security-auditor -m "v1"
-git agent tag security-auditor 0.1.0
+git agent tag security-auditor v0.1.0
 git agent push origin</code></pre>
       </div>
 
@@ -340,9 +343,19 @@ git diff refs/asset-tags/skill/code-review/v1.0.0 \
 <pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code># once per machine
 gh auth login
 
-git skill add acme/internal-rubric@2.0.0 \
+git skill add internal-rubric@v2.0.0 \
     --from https://github.com/acme/private-skills.git
 git skill install</code></pre>
+      </div>
+
+      <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
+        <div class="text-deep-black font-medium">Run evals on every PR</div>
+        <p class="mt-2 text-rich-black">Pair a versioned skill with a Go CLI for evals. <a href="https://github.com/microsoft/waza" class="underline">microsoft/waza</a> grades a skill against prompts and assertions; the <a href="https://github.com/niradler/waza" class="underline">niradler/waza</a> fork adds an <code class="mono">anthropic-cli</code> executor so a <code class="mono">SKILL.md</code> is tested inside a real agent loop with tools and files (<a href="https://github.com/niradler/waza/pull/1" class="underline">PR #1</a>).</p>
+<pre class="mt-3 mono text-[13px] leading-[1.6] bg-ghost-gray rounded-[10px] p-3 overflow-x-auto"><code>npm install -g @anthropic-ai/claude-code
+git clone --depth 1 https://github.com/niradler/waza ~/waza
+cd ~/waza &amp;&amp; go build -o /usr/local/bin/waza ./cmd/waza
+
+waza run skills/code-review/eval/suite.yaml</code></pre>
       </div>
 
       <div class="rounded-[14px] border border-subtle-ash bg-canvas-white p-4">
