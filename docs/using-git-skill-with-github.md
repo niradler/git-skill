@@ -1,16 +1,14 @@
 # Version-controlling AI agent assets with git-skill and GitHub
 
-If you've used Claude, Cursor, Codex, or any modern coding agent for more than a week, you've probably accumulated a folder of carefully tuned **skills** - system prompts, style guides, code review checklists, debugging protocols - and maybe a few **sub-agents** for specialized tasks. And if you work on a team, you've probably also discovered that those files don't have a story.
+If you've used Claude, Cursor, or Codex for more than a week, you've probably accumulated a folder of carefully tuned skills (system prompts, code review checklists, debugging protocols) and maybe a few sub-agents for specialized tasks. On a team, those files have no story. No version history. No diff when something changes. No way to pin a known-good revision. You drop a folder in `.claude/skills/` and pray nothing drifts.
 
-There's no version history. No diff when something changes. No way to pin a known-good revision. No mechanism for "I want the version Alice was using last Tuesday." You drop a folder in `.claude/skills/` and pray nothing drifts.
+Source code has had this solved since 2005. The infrastructure is sitting in every developer's `git` binary. **git-skill** says: skills and agents are directories of text files, that is exactly what git is good at, let's just use git.
 
-This is a solved problem for source code. It's been solved since 2005. The infrastructure is sitting in every developer's `git` binary. **git-skill** is a small CLI that says: skills and agents are directories of text files, that's exactly what git is good at, let's just use git.
-
-This article walks through the full workflow: authoring an asset, publishing it to GitHub, consuming it from another repo, upgrading it, and integrating it into a team's day-to-day.
+This article walks the full workflow: authoring an asset, publishing to GitHub, consuming from another repo, upgrading, running evals, and integrating into a team.
 
 ## The core idea
 
-git-skill stores each asset as a git tree object under custom refs:
+git-skill stores each asset as a git tree under custom refs:
 
 ```
 refs/assets/skill/code-review                    → latest commit (branch-like)
@@ -20,17 +18,17 @@ refs/assets/agent/security-auditor               → latest commit
 refs/asset-tags/agent/security-auditor/v0.3.0    → tagged release
 ```
 
-The two built-in kinds are `skill` (materializes as a full directory tree at the runtime target) and `agent` (materializes as a single marker file at the target). Every commit carries an `Asset-Kind: skill` or `Asset-Kind: agent` trailer, so a downstream tool can recover the kind from the commit alone.
+The two built-in kinds are `skill` (a full directory tree, materialized at the runtime target) and `agent` (a single marker file inside the asset tree, materialized to a single file at the runtime target). Every commit carries an `Asset-Kind: skill` or `Asset-Kind: agent` trailer so a downstream tool can recover the kind from the commit alone.
 
-These refs live in any existing git repository - your dedicated assets repo, your dotfiles, even your main project repo. Push them to GitHub with `git skill push origin` and anyone with read access can `git skill add` + `git skill install` them.
+These refs live in any git repository. Push them to GitHub with `git skill push origin` and anyone with read access can `git skill add` plus `git skill install` them.
 
-The CLI shells out to git plumbing commands (`hash-object`, `mktree`, `commit-tree`, `update-ref`) and wraps them in a friendly interface. The spec ([SKILL-FORMAT.md](../SKILL-FORMAT.md)) is independent of the implementation - anyone can write a tool that reads and writes the same format.
+The CLI shells out to git plumbing (`hash-object`, `mktree`, `commit-tree`, `update-ref`) and wraps it in a friendly interface. The spec ([SKILL-FORMAT.md](../SKILL-FORMAT.md)) is independent of the implementation. Anyone can write a tool that reads and writes the same format.
 
 ## Installation
 
 ```bash
-# Pin to a specific release — @latest can lag behind newly cut tags via
-# the Go module proxy for tens of minutes.
+# Pin to a specific release. @latest can lag tens of minutes behind newly cut tags
+# via the Go module proxy.
 go install github.com/niradler/git-skill/cmd/git-skill@v0.2.0
 
 # Or build from source
@@ -52,20 +50,20 @@ The same binary serves three roles based on its invocation name. Symlink it to e
 ln -s "$(which git-skill)" /usr/local/bin/git-agent
 ln -s "$(which git-skill)" /usr/local/bin/git-asset
 
-git skill list   # operates on skills
-git agent list   # operates on agents
+git skill list                # operates on skills
+git agent list                # operates on agents
 git asset list --kind skill   # kind-agnostic
 ```
 
-## Your first skill - author side
+## Author a skill
 
-Walk through this in any existing git repository (or create one fresh with `git init`).
+Walk through this in any existing git repository (or `git init` a fresh one).
 
 ```bash
 git skill init
 ```
 
-This scaffolds `assets.json` at the repo root and adds a managed block to `.gitignore`. Author your skill under `skills/<name>/`:
+This scaffolds `assets.json` at the repo root and adds a managed block to `.gitignore`. Author the skill under `skills/<name>/`:
 
 ```bash
 mkdir -p skills/code-review
@@ -89,34 +87,96 @@ Snapshot it into `refs/assets/skill/code-review` and tag a release:
 
 ```bash
 git skill commit code-review --path skills/code-review -m "initial cut"
-# Tags require the leading 'v'. v0.2.0 enforces ^v\d+\.\d+\.\d+(-...)? — a
-# bare 1.0.0 is rejected.
+# Tags require the leading 'v'. The CLI enforces ^v\d+\.\d+\.\d+(-...)?
+# A bare 1.0.0 is rejected.
 git skill tag code-review v1.0.0
 git skill push origin
 ```
 
-`git skill push origin` pushes `refs/assets/skill/*` and `refs/asset-tags/skill/*`. From the `git-agent` persona it would push the agent namespace; from `git-asset` (no kind) it would push both. **If you're publishing both kinds in one workflow step (typical in CI), use `git asset push origin` — `git skill push` only handles the skill namespace.**
+`git skill push origin` pushes the skill refs and tags. From the `git-agent` persona it pushes the agent namespace. From `git-asset` it pushes both. If you publish both kinds in one workflow step (typical in CI), use `git asset push origin`. `git skill push` only handles the skill namespace.
 
-## Consuming the asset from another repo
+## Author an agent
 
-In a different repo (your app, your dotfiles, your CI image), onboard the asset and materialize it:
+Agents share the same workflow under a different ref namespace. The canonical asset tree contains a single marker file named `AGENT.md` (this is the source filename inside the asset tree, per the git-skill spec). It materializes to a runtime-specific destination on `install`. For Claude Code that destination is `.claude/agents/<name>.md`. For Codex it is `.codex/agents/<name>.toml`.
+
+The `AGENT.md` body uses the Claude Code sub-agent format, so the materialized file is loadable as-is:
+
+```bash
+mkdir -p agents/security-auditor
+$EDITOR agents/security-auditor/AGENT.md
+```
+
+`AGENT.md`:
+
+```markdown
+---
+name: security-auditor
+description: Scan a code diff or file set for OWASP-style vulnerabilities, hardcoded secrets, and missing auth checks.
+---
+
+You are a focused security review sub-agent. Read a diff or a small set of files and surface security issues. Do not refactor, restyle, or comment on architecture. Output findings only.
+
+## Scope
+
+- Injection (SQL, command, LDAP, template, header)
+- XSS, path traversal, SSRF
+- Unsafe deserialization, weak crypto, hardcoded keys
+- Missing AuthN/AuthZ on new endpoints
+- Secrets committed to the tree
+
+## Output format
+
+For each finding:
+
+- **Severity:** critical | high | medium | low
+- **Category:** one of the buckets above
+- **Location:** path/to/file:line
+- **Issue:** one sentence
+- **Fix:** one sentence with the concrete remediation
+```
+
+Then publish:
+
+```bash
+git agent commit security-auditor --path agents/security-auditor -m "v1"
+git agent tag security-auditor v0.1.0
+git agent push origin
+```
+
+This is exactly what ships in the demo repo at [`niradler/git-skill-demos/agents/security-auditor`](https://github.com/niradler/git-skill-demos/tree/main/agents/security-auditor).
+
+## Install assets in another repo
+
+Real working examples against the demo repo:
 
 ```bash
 git skill init
-git skill add code-review@v1.0.0 \
-    --from https://github.com/acme/skills \
+
+# Install a skill at a prod tag
+git skill add code-review@v0.1.0 \
+    --from https://github.com/niradler/git-skill-demos \
+    --runtime claude
+
+# Install another skill at a dev tag
+git skill add using-git-skill@v0.1.0-dev.12 \
+    --from https://github.com/niradler/git-skill-demos \
+    --runtime claude
+
+# Install an agent
+git agent add security-auditor@v0.1.0-dev.12 \
+    --from https://github.com/niradler/git-skill-demos \
     --runtime claude
 ```
 
 What just happened:
 
-1. `add` resolved `v1.0.0` against the tags on the upstream remote, recorded both the spec (`v1.0.0`) and the resolved version + commit SHA in `assets.json`, and stored the canonical tree under `skills/code-review/`.
-2. Because `--runtime claude` was passed, it also fanned out into `.claude/skills/code-review/`. **Without `--runtime`, only the canonical copy is written** — useful for skills you want to manage manually, but for Claude Code consumers `--runtime claude` is what you want.
-3. The default `.gitignore` scaffolded by `init` ignores `/skills/` and `.claude/skills/` — so by default only `assets.json` is tracked, and teammates run `git skill install` on clone to materialize. If you want PR-reviewable materialized diffs (the model used in the [consumer demo repo](https://github.com/niradler/git-skill-consumer-demo)), remove those entries from `.gitignore`.
+1. `add` resolved the spec against the upstream tags, recorded both the spec (`v0.1.0`) and the resolved version plus commit SHA in `assets.json`, and stored the canonical tree under `skills/code-review/` (or `agents/security-auditor/`).
+2. Because `--runtime claude` was passed, it also fanned out to `.claude/skills/code-review/` for the skill and `.claude/agents/security-auditor.md` for the agent. Without `--runtime`, only the canonical copy is written. For Claude Code consumers, pass `--runtime claude`.
+3. The default `.gitignore` scaffolded by `init` ignores the canonical roots (`/skills/`, `/agents/`) and every runtime fanout directory (`.claude/skills/`, `.claude/agents/`, `.codex/agents/`, `.cursor/rules/`, `.agents/skills/`). By default only `assets.json` is tracked, and teammates run `git skill install` on clone to materialize. If you want PR-reviewable materialized diffs (the model used in the [consumer demo repo](https://github.com/niradler/git-skill-consumer-demo)), remove those entries from `.gitignore`.
 
-Commit `assets.json` alongside your code. Now any teammate who clones the repo can run `git skill install` and get byte-identical files.
+Commit `assets.json` alongside your code. Any teammate who clones the repo can run `git skill install` and get byte-identical files.
 
-`@<spec>` accepts an exact tag (`v1.0.0`, `v1.0.0-dev.7`) or a semver range when the producer ships prod releases. For dev tags (which are immutable points minted per CI run — see the next section), use exact pins.
+`@<spec>` accepts an exact tag (`v1.0.0`, `v0.1.0-dev.7`) or a semver range when the producer ships prod releases. For dev tags (immutable points minted per CI run, see the next section), use exact pins.
 
 ## Upgrading
 
@@ -133,19 +193,19 @@ git skill update code-review
 git add assets.json && git commit -m "bump code-review to v1.1.0"
 ```
 
-`update` re-resolves the spec against the upstream tags. If the spec is a range like `^1.0.0`, the new `v1.1.0` gets picked up automatically. **If the spec is an exact tag (`v1.0.0` or any `-dev.N`), `update` is a no-op** — exact pins are immutable by definition. To move to a new exact tag, `git skill remove <name>` and re-add at the new tag.
+`update` re-resolves the spec against the upstream tags. If the spec is a range like `^1.0.0`, the new `v1.1.0` gets picked up automatically. If the spec is an exact tag (`v1.0.0` or any `-dev.N`), `update` is a no-op. Exact pins are immutable by definition. To move to a new exact tag, `git skill remove <name>` and re-add at the new tag.
 
 ## Dev tags and CI cadence
 
-The publish flow above is one tag per author command. In a team setting, you typically want CI to mint a tag on every push to `main` so consumers can pick it up immediately. The convention is **dev tags**: `v<base>-dev.<run_number>` where `<base>` is your floor semver (e.g. `0.1.0` from `version.txt`) and `<run_number>` is the GitHub Actions run counter — monotonically increasing for the repo.
+In a team setting you typically want CI to mint a tag on every push to `main` so consumers can pick it up immediately. The convention is dev tags: `v<base>-dev.<run_number>` where `<base>` is your floor semver (e.g. `0.1.0` from `version.txt`) and `<run_number>` is the GitHub Actions run counter (monotonically increasing for the repo).
 
-A skill at `v0.1.0-dev.42` is a snapshot of `refs/assets/skill/<name>` as it existed at the 42nd publish CI run. When the team is ready to declare a stable release, a separate manual workflow promotes a specific commit to a bare semver tag (`v1.0.0`).
+A skill at `v0.1.0-dev.42` is a snapshot of `refs/assets/skill/<name>` as it existed at the 42nd publish CI run. When the team is ready for a stable release, a separate manual workflow promotes a specific commit to a bare semver tag (`v1.0.0`).
 
-This split — automatic immutable dev tags + manual prod tags — gives consumers a stable spec form for production (`^1.0.0`) and a sharp opt-in handle for early access (`v0.1.0-dev.42`).
+This split (automatic immutable dev tags plus manual prod tags) gives consumers a stable spec form for production (`^1.0.0`) and a sharp opt-in handle for early access (`v0.1.0-dev.42`).
 
 ## CI publish workflow
 
-A minimal GitHub Actions job that publishes every changed skill/agent on push to `main`:
+A minimal GitHub Actions job that publishes every changed skill or agent on push to `main`:
 
 ```yaml
 - uses: actions/checkout@v4
@@ -163,7 +223,7 @@ A minimal GitHub Actions job that publishes every changed skill/agent on push to
     ln -sf "$gobin/git-skill" "$gobin/git-asset"
 
 - name: Fetch existing asset refs
-  # actions/checkout only pulls refs/heads/* (+ refs/tags/* with fetch-tags).
+  # actions/checkout only pulls refs/heads/* and refs/tags/*.
   # Custom refs/assets/* are NOT fetched, so `git skill commit` would
   # create orphan histories and the push would be rejected as non-FF.
   run: git fetch origin '+refs/assets/*:refs/assets/*' '+refs/asset-tags/*:refs/asset-tags/*' || true
@@ -194,68 +254,91 @@ A minimal GitHub Actions job that publishes every changed skill/agent on push to
   run: git asset push origin
 ```
 
-Four CI gotchas worth pinning in your memory, all of which I hit setting this up:
+Four CI gotchas worth pinning in memory, all of which I hit setting this up:
 
-1. **Pin git-skill via `@v<X.Y.Z>`, not `@latest`.** The Go module proxy can lag behind newly cut tags by tens of minutes.
-2. **Fetch `refs/assets/*` explicitly** before any `git skill commit`. `actions/checkout` doesn't pull custom refs.
+1. **Pin git-skill via `@v<X.Y.Z>`, not `@latest`.** The Go module proxy can lag tens of minutes behind newly cut tags.
+2. **Fetch `refs/assets/*` explicitly** before any `git skill commit`. `actions/checkout` does not pull custom refs.
 3. **Use `git asset push` for multi-kind producers.** `git skill push` is skill-only.
 4. **`--kind` flag before positional args.** `git skill tag --kind agent foo v0.1.0`, not `git skill tag foo --kind agent v0.1.0`.
 
-For a working reference, see [`niradler/git-skill-demos/.github/workflows/publish.yml`](https://github.com/niradler/git-skill-demos/blob/main/.github/workflows/publish.yml).
+Working reference: [`niradler/git-skill-demos/.github/workflows/publish.yml`](https://github.com/niradler/git-skill-demos/blob/main/.github/workflows/publish.yml).
 
-## Promote: dev → prod
+## Promote: dev to prod
 
 A separate manual workflow turns a dev tag into a prod release. Inputs are `skill` (name) and `version` (bare semver, no `-dev`). The workflow:
 
-1. Validates inputs and runs structure-tier evals against the current canonical tree (no API key needed).
+1. Validates inputs and runs structure-tier evals against the canonical tree (no API key needed).
 2. Tags the canonical commit with `v<version>`.
 3. Pushes the new tag.
 
-Reference: [`promote.yml`](https://github.com/niradler/git-skill-demos/blob/main/.github/workflows/promote.yml). The author triggers it via `gh workflow run promote.yml -f skill=code-review -f version=1.0.0` after the dev version has been validated locally.
+Reference: [`promote.yml`](https://github.com/niradler/git-skill-demos/blob/main/.github/workflows/promote.yml). Trigger it with `gh workflow run promote.yml -f skill=code-review -f version=1.0.0` after the dev version has been validated.
 
 ## Evals
 
-Skills tend to break in two ways: **structure drift** (a typo in the frontmatter, a missing required section, a broken pointer to an eval prompt) and **behavior drift** (the skill still parses fine but the model's outputs degrade). git-skill assumes both are worth catching, but they have different testing tiers.
+Skills break in two ways:
 
-**Structure tier — runs in CI.** Deterministic checks against the skill files: frontmatter present and well-formed, required H2 sections present, `eval/prompts.json` parses, every prompt id has a matching `Behavioral.<id>` section in `assertions.md`. No model call needed.
+- **Structure drift.** A typo in the frontmatter, a missing required section, a broken pointer to an eval prompt. Caught by deterministic file checks, no model call needed. Easy to run in CI on every push.
+- **Behavior drift.** The skill still parses fine but the model's outputs degrade. Needs real model runs against a fixed prompt set, graded against assertions.
 
-**Behavior tier — runs locally.** The author opens Claude Code, reads `eval/prompts.json` + `eval/assertions.md`, spawns a `Task` subagent per prompt with the full SKILL.md inlined verbatim, and grades the responses against the binary checkbox assertions. Pass = `passed/total >= passing_score` from `eval.config.yaml`. The promote workflow gates on this happening *before* the PR is opened — CI never sees an API key.
+For the behavior tier, the cleanest path is [microsoft/waza](https://github.com/microsoft/waza), a Go CLI for evaluating agent skills. Waza scaffolds eval suites with prompts, fixtures, and graders (`text`, `json_schema`, `prompt`-as-judge, `behavior`, `tool_calls`, `tool_constraint`, `action_sequence`, `skill_invocation`, inline `code`), runs them against a model, and reports pass rates.
 
-Why local-first? Because subagents are the testing harness the producer already has installed, and because CI-with-API-keys means token costs scale with PR volume in ways nobody enjoys. Reference skill: [`running-skill-evals`](https://github.com/niradler/git-skill-demos/tree/main/skills/running-skill-evals).
+Upstream waza targets hosted API executors. That works for raw-prompt benchmarks but misses the case where the thing under test is an agent prompt: a `SKILL.md` only meaningful inside an agent loop with tools, file access, and skill discovery. The fork [niradler/waza](https://github.com/niradler/waza) adds an `anthropic-cli` executor that shells out to the Claude CLI ([PR #1](https://github.com/niradler/waza/pull/1)):
+
+```bash
+claude --print --bare \
+       --output-format stream-json --verbose \
+       --permission-mode bypassPermissions \
+       --add-dir <workspace> \
+       --model <model-id>
+```
+
+Selected via `engine: anthropic-cli` in `.waza.yaml`. Per-task workspaces seeded from `inputs.files:` are mounted via `--add-dir` so the candidate agent can `Read` and `Write` real files. The executor parses the CLI's `stream-json --verbose` output, pairs `tool_use` and `tool_result` events by id, and feeds them to graders that depend on tool and skill telemetry. Every grader type works end-to-end against the CLI executor, not just hosted-API ones.
+
+A CI workflow that runs evals against a skill on every PR:
+
+```yaml
+- uses: actions/checkout@v4
+
+- name: Install Claude CLI
+  run: npm install -g @anthropic-ai/claude-code
+
+- name: Install waza (anthropic-cli fork)
+  run: |
+    git clone --depth 1 https://github.com/niradler/waza ~/waza
+    cd ~/waza && go build -o /usr/local/bin/waza ./cmd/waza
+
+- name: Run evals
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  run: waza run skills/code-review/eval/suite.yaml
+```
+
+A suite is YAML with prompts, fixtures, graders, and a passing score. With `tasks: [tasks/*.yaml]` you keep large multi-file suites tidy without enumerating every file. A status flip from pass to fail blocks the PR. A score drop within tolerance surfaces as a warning.
 
 ## Working with sub-agents
 
-Agents share the same workflow, just under a different ref namespace and via the `git-agent` persona:
+The example in "Author an agent" above covers the producer side. On the consumer side:
 
 ```bash
-git skill init   # init is universal — same assets.json holds both kinds
-mkdir -p agents/security-auditor
-$EDITOR agents/security-auditor/AGENT.md
-git agent commit security-auditor --path agents/security-auditor -m "v1"
-git agent tag security-auditor v0.1.0
-git agent push origin
-```
-
-On the consumer side:
-
-```bash
-git agent add security-auditor@v0.1.0 \
-    --from https://github.com/acme/agents \
+git agent add security-auditor@v0.1.0-dev.12 \
+    --from https://github.com/niradler/git-skill-demos \
     --runtime claude
 ```
 
-Agents materialize as a single marker file at the runtime target - Claude expects `AGENT.md` at `.claude/agents/<name>.md`; Codex expects `agent.toml` at `.codex/agents/<name>.toml`. The built-in registry covers both; per-asset overrides live in the asset's `git-skill.yaml`.
+`AGENT.md` from the canonical tree lands at `.claude/agents/security-auditor.md` and Claude Code picks it up on next launch. The destination filename is `<name>.md`, derived from the asset name. The source filename `AGENT.md` is the spec convention inside the canonical tree, not a runtime artifact.
+
+The built-in runtime registry maps Claude and Codex out of the box. Per-asset overrides live in the asset's `git-skill.yaml`.
 
 ## Customizing where assets materialize
 
-Three layers of customization sit on top of the built-in registry. Lowest precedence first:
+Four layers sit on top of the built-in registry. Lowest precedence first:
 
-1. **`~/.config/git-skill/runtimes.yaml`** - your machine-wide defaults.
-2. **`<repo>/.git-skill/runtimes.yaml`** - repo-wide policy, committed alongside `assets.json`.
-3. **`git-skill.yaml` in the asset tree** - author-declared overrides that ship with the asset.
-4. **`--target runtime=path` on `git skill add`** - per-asset override pinned in the lock entry.
+1. `~/.config/git-skill/runtimes.yaml`: machine-wide defaults.
+2. `<repo>/.git-skill/runtimes.yaml`: repo-wide policy, committed alongside `assets.json`.
+3. `git-skill.yaml` in the asset tree: author-declared overrides that ship with the asset.
+4. `--target runtime=path` on `git skill add`: per-asset override pinned in the lock entry.
 
-Example: send `claude` skills to an alternate path repo-wide:
+Send `claude` skills to an alternate path repo-wide:
 
 ```yaml
 # .git-skill/runtimes.yaml
@@ -265,7 +348,7 @@ runtimes:
       to: .ai/claude/skills/<name>/
 ```
 
-Or extend the tool to a runtime that isn't in the built-in registry:
+Extend the tool to a runtime that is not in the built-in registry:
 
 ```yaml
 runtimes:
@@ -277,22 +360,13 @@ runtimes:
       to: .myfuture/agents/<name>.md
 ```
 
-## Using private repos
+## Private repos
 
-git-skill shells out to plain `git fetch` / `git push`, so whatever credentials work for `git clone` work here:
-
-```bash
-# once per machine
-gh auth login
-
-git skill add internal-rubric@v2.0.0 \
-    --from https://github.com/acme/private-skills \
-    --runtime claude
-```
+git-skill shells out to plain `git fetch` and `git push`. Whatever credentials work for `git clone` work here. Authenticate once with `gh auth login`, then `git skill add ... --from https://github.com/acme/private-skills` works the same as for a public repo.
 
 ## Inspecting without the CLI
 
-Assets are plain git refs - any git-aware tool reads them natively:
+Assets are plain git refs. Any git-aware tool reads them natively:
 
 ```bash
 git cat-file -p refs/assets/skill/code-review
@@ -311,17 +385,17 @@ git diff refs/asset-tags/skill/code-review/v1.0.0 \
          refs/asset-tags/skill/code-review/v1.1.0
 ```
 
-This is the point: the CLI is convenience, not protocol. Drop it and your assets are still readable, still diff-able, still versioned.
+The CLI is convenience, not protocol. Drop it and your assets are still readable, diff-able, versioned.
 
 ## Cross-platform notes
 
-- **Path separators in `assets.json`.** v0.2.0 on Windows writes OS-native separators (`skills\\code-review`) into the `canonical` field. Normalize to forward slashes before committing — lock files written on one OS should be byte-identical to lock files written on any other.
-- **Symlinks on Windows.** Require developer mode or an admin shell. Without those privileges the materializer falls back to a plain copy (the changelog calls this out under "Cross-platform materialization").
+- **Path separators in `assets.json`.** v0.2.0 on Windows writes OS-native separators (`skills\\code-review`) into the `canonical` field. Normalize to forward slashes before committing so lock files written on one OS are byte-identical to lock files written on any other.
+- **Symlinks on Windows.** Require developer mode or an admin shell. Without those privileges the materializer falls back to a plain copy.
 - **Line endings.** `core.autocrlf=true` on Windows will rewrite line endings in materialized files. If you care about byte-stable runtime trees across the team, add `*.md text eol=lf` to `.gitattributes` in the consumer repo.
 
 ## End-to-end reference
 
 Two repos that exercise everything above:
 
-- **Producer:** [`niradler/git-skill-demos`](https://github.com/niradler/git-skill-demos) — six skills + one agent, CI publish + promote workflows, eval format, the `running-skill-evals` skill.
-- **Consumer:** [`niradler/git-skill-consumer-demo`](https://github.com/niradler/git-skill-consumer-demo) — four PRs that walk through install, upgrade, multi-skill, and rollback against the producer above. See [`docs/demo-flows.md`](https://github.com/niradler/git-skill-consumer-demo/blob/main/docs/demo-flows.md).
+- **Producer:** [`niradler/git-skill-demos`](https://github.com/niradler/git-skill-demos) covers six skills plus one agent, CI publish and promote workflows, eval format, and the `running-skill-evals` skill.
+- **Consumer:** [`niradler/git-skill-consumer-demo`](https://github.com/niradler/git-skill-consumer-demo) walks four PRs through install, upgrade, multi-skill, and rollback against the producer above. See [`docs/demo-flows.md`](https://github.com/niradler/git-skill-consumer-demo/blob/main/docs/demo-flows.md).
