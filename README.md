@@ -247,6 +247,7 @@ This makes the commit self-describing: any indexer or downstream tool can recove
 
 ## Documentation
 
+- [Blog: Version-controlling AI agent skills with git-skill and GitHub](https://blog.niradler.com/version-controlling-ai-agent-skills-with-git-skill-and-github): end-to-end walkthrough with CI, evals, and dev-tag cadence
 - [SKILL-FORMAT.md](./SKILL-FORMAT.md): storage format specification
 - [ARCHITECTURE.md](./ARCHITECTURE.md): CLI vs platform separation
 - [CONTRIBUTING.md](./CONTRIBUTING.md): how to contribute
